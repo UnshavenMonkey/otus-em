@@ -1,6 +1,13 @@
 "use client";
 
-import { ListTree, LoaderCircle, LogOut, ShoppingBag, User } from "lucide-react";
+import {
+  ListTree,
+  LoaderCircle,
+  LogOut,
+  ShoppingBag,
+  ShoppingCart,
+  User,
+} from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -25,6 +32,11 @@ export function AppHeader() {
         </Link>
 
         <nav className="flex flex-wrap items-center gap-2">
+          <Link className={buttonVariants({ variant: "ghost" })} href="/cart">
+            <ShoppingCart aria-hidden="true" />
+            Корзина
+          </Link>
+
           {!isReady ? (
             <div className="flex h-9 items-center gap-2 px-3 text-sm text-muted-foreground">
               <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />

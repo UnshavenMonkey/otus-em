@@ -8,6 +8,7 @@ import {
   ImageOff,
   Plus,
   RefreshCw,
+  ShoppingCart,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
@@ -15,6 +16,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { getProducts, type Pagination, type Product, type Sorting } from "@/lib/api";
+import { addProductToCart } from "@/lib/cart";
 
 const PAGE_SIZE = 8;
 
@@ -269,6 +271,7 @@ function ProductCard({
   product: Product;
   canEdit: boolean;
 }) {
+  const [isAdded, setIsAdded] = useState(false);
   const price = new Intl.NumberFormat("ru-RU", {
     style: "currency",
     currency: "RUB",
@@ -282,6 +285,12 @@ function ProductCard({
           maximumFractionDigits: 0,
         }).format(product.oldPrice)
       : null;
+
+  function handleAddToCart() {
+    addProductToCart(product);
+    setIsAdded(true);
+    window.setTimeout(() => setIsAdded(false), 1200);
+  }
 
   return (
     <article className="overflow-hidden rounded-lg border bg-card shadow-sm">
@@ -336,6 +345,11 @@ function ProductCard({
             </span>
           ) : null}
         </div>
+
+        <Button className="w-full" onClick={handleAddToCart}>
+          <ShoppingCart aria-hidden="true" />
+          {isAdded ? "Добавлено" : "В корзину"}
+        </Button>
       </div>
     </article>
   );
