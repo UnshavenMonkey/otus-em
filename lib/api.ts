@@ -13,6 +13,54 @@ export type Profile = {
   commandId: string;
 };
 
+export type Category = {
+  id: string;
+  name: string;
+  photo?: string;
+  createdAt: string;
+  updatedAt: string;
+  commandId: string;
+};
+
+export type Product = {
+  id: string;
+  name: string;
+  photo?: string;
+  desc?: string;
+  createdAt: string;
+  updatedAt: string;
+  oldPrice?: number;
+  price: number;
+  commandId: string;
+  category: Category;
+};
+
+export type Pagination = {
+  pageSize: number;
+  pageNumber: number;
+  total: number;
+};
+
+export type Sorting = {
+  type: "ASC" | "DESC";
+  field: "id" | "createdAt" | "updatedAt" | "name" | "date";
+};
+
+export type ListResponse<T> = {
+  data: T[];
+  pagination: Pagination;
+  sorting?: Sorting;
+};
+
+type ProductsFilters = {
+  name?: string;
+  pagination?: {
+    pageSize?: number;
+    pageNumber?: number;
+  };
+  sorting?: Sorting;
+};
+
 type SignUpBody = {
   email: string;
   password: string;
@@ -77,6 +125,23 @@ async function getErrorMessage(response: Response) {
   }
 }
 
+function toSearchParams(filters: Record<string, unknown>) {
+  const params = new URLSearchParams();
+
+  Object.entries(filters).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === "") {
+      return;
+    }
+
+    params.set(
+      key,
+      typeof value === "string" ? value : JSON.stringify(value)
+    );
+  });
+
+  return params.toString();
+}
+
 export function signUp(email: string, password: string) {
   const body: SignUpBody = {
     email,
@@ -137,3 +202,11 @@ export function changePassword(
   });
 }
 
+export function getProducts(filters: ProductsFilters = {}, token?: string) {
+  const search = toSearchParams(filters);
+  const path = search ? `/products?${search}` : "/products";
+
+  return request<ListResponse<Product>>(path, {
+    token,
+  });
+}

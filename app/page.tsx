@@ -1,7 +1,249 @@
+"use client";
+
+import { ChevronLeft, ChevronRight, ImageOff, RefreshCw } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+
+import { useAuth } from "@/components/auth-provider";
+import { Button } from "@/components/ui/button";
+import { getProducts, type Pagination, type Product } from "@/lib/api";
+
+const PAGE_SIZE = 8;
+
 export default function Home() {
+  const { token, isReady } = useAuth();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [pagination, setPagination] = useState<Pagination>({
+    pageNumber: 1,
+    pageSize: PAGE_SIZE,
+    total: 0,
+  });
+  const [page, setPage] = useState(1);
+  const [reloadKey, setReloadKey] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(pagination.total / pagination.pageSize)),
+    [pagination.pageSize, pagination.total]
+  );
+
+  useEffect(() => {
+    if (!isReady) {
+      return;
+    }
+
+    let isIgnored = false;
+
+    async function loadProducts() {
+      setIsLoading(true);
+      setError("");
+
+      try {
+        const result = await getProducts(
+          {
+            pagination: {
+              pageNumber: page,
+              pageSize: PAGE_SIZE,
+            },
+            sorting: {
+              field: "createdAt",
+              type: "DESC",
+            },
+          },
+          token ?? undefined
+        );
+
+        if (!isIgnored) {
+          setProducts(result.data);
+          setPagination(result.pagination);
+        }
+      } catch (caughtError) {
+        if (!isIgnored) {
+          setProducts([]);
+          setError(
+            caughtError instanceof Error
+              ? caughtError.message
+              : "Не удалось загрузить товары"
+          );
+        }
+      } finally {
+        if (!isIgnored) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadProducts();
+
+    return () => {
+      isIgnored = true;
+    };
+  }, [isReady, page, reloadKey, token]);
+
+  function handleReload() {
+    setReloadKey((currentKey) => currentKey + 1);
+  }
+
   return (
-    <main className="flex flex-1 items-center justify-center px-6 py-16">
-      <section className="w-full max-w-5xl"></section>
+    <main className="flex flex-1 justify-center px-6 py-10">
+      <section className="w-full max-w-6xl">
+        <div className="flex flex-col gap-4 border-b pb-6 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-sm font-medium uppercase tracking-[0.18em] text-muted-foreground">
+              Каталог
+            </p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-normal">
+              Список товаров
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Главный экран показывает товары из API. После входа будут
+              отображаться данные вашей команды.
+            </p>
+          </div>
+
+          <Button variant="outline" onClick={handleReload} disabled={isLoading}>
+            <RefreshCw aria-hidden="true" />
+            Обновить
+          </Button>
+        </div>
+
+        {error ? (
+          <div className="mt-6 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+            {error}
+          </div>
+        ) : null}
+
+        {isLoading ? (
+          <ProductsSkeleton />
+        ) : products.length ? (
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {products.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        ) : (
+          <div className="mt-6 rounded-lg border bg-card p-10 text-center">
+            <ImageOff
+              className="mx-auto size-10 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <h2 className="mt-4 text-lg font-semibold">Товаров пока нет</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Когда товары появятся в API, они будут показаны на этой странице.
+            </p>
+          </div>
+        )}
+
+        <div className="mt-6 flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm text-muted-foreground">
+            Страница {pagination.pageNumber} из {totalPages}. Всего товаров:{" "}
+            {pagination.total}
+          </p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setPage((currentPage) => Math.max(1, currentPage - 1))}
+              disabled={isLoading || page <= 1}
+            >
+              <ChevronLeft aria-hidden="true" />
+              Назад
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() =>
+                setPage((currentPage) => Math.min(totalPages, currentPage + 1))
+              }
+              disabled={isLoading || page >= totalPages}
+            >
+              Вперед
+              <ChevronRight aria-hidden="true" />
+            </Button>
+          </div>
+        </div>
+      </section>
     </main>
+  );
+}
+
+function ProductCard({ product }: { product: Product }) {
+  const price = new Intl.NumberFormat("ru-RU", {
+    style: "currency",
+    currency: "RUB",
+    maximumFractionDigits: 0,
+  }).format(product.price);
+  const oldPrice =
+    typeof product.oldPrice === "number"
+      ? new Intl.NumberFormat("ru-RU", {
+          style: "currency",
+          currency: "RUB",
+          maximumFractionDigits: 0,
+        }).format(product.oldPrice)
+      : null;
+
+  return (
+    <article className="overflow-hidden rounded-lg border bg-card shadow-sm">
+      <div className="flex aspect-[4/3] items-center justify-center bg-muted">
+        {product.photo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            className="h-full w-full object-cover"
+            src={product.photo}
+            alt={product.name}
+          />
+        ) : (
+          <ImageOff className="size-8 text-muted-foreground" aria-hidden="true" />
+        )}
+      </div>
+      <div className="space-y-3 p-4">
+        <div>
+          <p className="text-xs text-muted-foreground">
+            {product.category?.name ?? "Без категории"}
+          </p>
+          <h2 className="mt-1 line-clamp-2 min-h-10 text-base font-semibold">
+            {product.name}
+          </h2>
+        </div>
+
+        {product.desc ? (
+          <p className="line-clamp-2 min-h-10 text-sm leading-5 text-muted-foreground">
+            {product.desc}
+          </p>
+        ) : (
+          <p className="min-h-10 text-sm leading-5 text-muted-foreground">
+            Описание не указано
+          </p>
+        )}
+
+        <div className="flex items-baseline gap-2">
+          <span className="text-lg font-semibold">{price}</span>
+          {oldPrice ? (
+            <span className="text-sm text-muted-foreground line-through">
+              {oldPrice}
+            </span>
+          ) : null}
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function ProductsSkeleton() {
+  return (
+    <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {Array.from({ length: PAGE_SIZE }).map((_, index) => (
+        <div
+          className="overflow-hidden rounded-lg border bg-card shadow-sm"
+          key={index}
+        >
+          <div className="aspect-[4/3] animate-pulse bg-muted" />
+          <div className="space-y-3 p-4">
+            <div className="h-3 w-24 animate-pulse rounded bg-muted" />
+            <div className="h-5 w-3/4 animate-pulse rounded bg-muted" />
+            <div className="h-10 animate-pulse rounded bg-muted" />
+            <div className="h-6 w-20 animate-pulse rounded bg-muted" />
+          </div>
+        </div>
+      ))}
+    </div>
   );
 }
