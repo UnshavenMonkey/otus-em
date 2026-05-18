@@ -92,6 +92,10 @@ export default function CategoriesPage() {
               Справочник
             </p>
             <h1 className="mt-2 text-3xl font-semibold">Категории</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Добавляйте новые категории и обновляйте существующие, чтобы
+              товары было проще группировать в каталоге.
+            </p>
           </div>
 
           <div className="flex gap-2">
@@ -157,6 +161,7 @@ export default function CategoriesPage() {
                   className={buttonVariants({ variant: "outline", size: "icon" })}
                   href={`/categories/${category.id}/edit`}
                   aria-label="Редактировать категорию"
+                  title="Редактировать"
                 >
                   <Edit aria-hidden="true" />
                 </Link>
@@ -169,6 +174,10 @@ export default function CategoriesPage() {
             <p className="mt-2 text-sm text-muted-foreground">
               Создайте первую категорию, чтобы использовать ее в товарах.
             </p>
+            <Link className={buttonVariants({ className: "mt-4" })} href="/categories/new">
+              <Plus aria-hidden="true" />
+              Добавить категорию
+            </Link>
           </div>
         )}
       </section>

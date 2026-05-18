@@ -1,6 +1,6 @@
 "use client";
 
-import { Save } from "lucide-react";
+import { ArrowLeft, ImageOff, Save } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { ComponentProps } from "react";
@@ -39,8 +39,15 @@ export function CategoryForm({ category }: { category?: Category }) {
       return;
     }
 
+    const trimmedName = name.trim();
+
+    if (!trimmedName) {
+      setError("Укажите название категории");
+      return;
+    }
+
     const body: CategoryBody = {
-      name: name.trim(),
+      name: trimmedName,
       photo: photo.trim() || undefined,
     };
 
@@ -53,8 +60,8 @@ export function CategoryForm({ category }: { category?: Category }) {
         await updateCategory(token, category.id, body);
         setMessage("Категория обновлена");
       } else {
-        const createdCategory = await createCategory(token, body);
-        router.replace(`/categories/${createdCategory.id}/edit`);
+        await createCategory(token, body);
+        router.replace("/categories");
         router.refresh();
       }
     } catch (caughtError) {
@@ -71,7 +78,9 @@ export function CategoryForm({ category }: { category?: Category }) {
   if (!isReady || !isAuthorized) {
     return (
       <main className="flex flex-1 items-center justify-center px-6 py-12">
-        <p className="text-sm text-muted-foreground">Проверяем авторизацию...</p>
+        <p className="text-sm text-muted-foreground">
+          Проверяем авторизацию...
+        </p>
       </main>
     );
   }
@@ -86,9 +95,39 @@ export function CategoryForm({ category }: { category?: Category }) {
           <h1 className="mt-2 text-3xl font-semibold">
             {category ? "Редактирование категории" : "Новая категория"}
           </h1>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Название будет показываться в карточках товаров, а фото можно
+            использовать как визуальную подсказку в справочнике.
+          </p>
         </div>
 
         <form className="mt-6 space-y-5" onSubmit={handleSubmit}>
+          <div className="flex items-center gap-4 rounded-lg border bg-card p-4">
+            <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
+              {photo.trim() ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  className="h-full w-full object-cover"
+                  src={photo.trim()}
+                  alt={name || "Фото категории"}
+                />
+              ) : (
+                <ImageOff
+                  className="size-7 text-muted-foreground"
+                  aria-hidden="true"
+                />
+              )}
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-medium">
+                {name.trim() || "Категория без названия"}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Предпросмотр карточки
+              </p>
+            </div>
+          </div>
+
           <label className="block space-y-2">
             <span className="text-sm font-medium">Название</span>
             <input
@@ -124,7 +163,8 @@ export function CategoryForm({ category }: { category?: Category }) {
               variant="outline"
               onClick={() => router.push("/categories")}
             >
-              Вернуться к списку
+              <ArrowLeft aria-hidden="true" />
+              К списку
             </Button>
           </div>
         </form>

@@ -3,8 +3,8 @@
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-import { CategoryForm } from "@/components/category-form";
 import { useAuth } from "@/components/auth-provider";
+import { CategoryForm } from "@/components/category-form";
 import { getCategory, type Category } from "@/lib/api";
 
 export default function EditCategoryPage() {
@@ -26,6 +26,7 @@ export default function EditCategoryPage() {
       return;
     }
 
+    const currentToken = token;
     let isIgnored = false;
 
     async function loadCategory() {
@@ -33,7 +34,7 @@ export default function EditCategoryPage() {
       setError("");
 
       try {
-        const result = await getCategory(params.id, token ?? undefined);
+        const result = await getCategory(params.id, currentToken);
 
         if (!isIgnored) {
           setCategory(result);
