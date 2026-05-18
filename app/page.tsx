@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  ArrowDownUp,
   ChevronLeft,
   ChevronRight,
   Edit,
@@ -13,9 +14,48 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/components/auth-provider";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { getProducts, type Pagination, type Product } from "@/lib/api";
+import { getProducts, type Pagination, type Product, type Sorting } from "@/lib/api";
 
 const PAGE_SIZE = 8;
+
+type ProductSortValue =
+  | "createdAt-desc"
+  | "createdAt-asc"
+  | "name-asc"
+  | "name-desc"
+  | "updatedAt-desc";
+
+const SORT_OPTIONS: Array<{
+  value: ProductSortValue;
+  label: string;
+  sorting: Sorting;
+}> = [
+  {
+    value: "createdAt-desc",
+    label: "Сначала новые",
+    sorting: { field: "createdAt", type: "DESC" },
+  },
+  {
+    value: "createdAt-asc",
+    label: "Сначала старые",
+    sorting: { field: "createdAt", type: "ASC" },
+  },
+  {
+    value: "name-asc",
+    label: "Название: А-Я",
+    sorting: { field: "name", type: "ASC" },
+  },
+  {
+    value: "name-desc",
+    label: "Название: Я-А",
+    sorting: { field: "name", type: "DESC" },
+  },
+  {
+    value: "updatedAt-desc",
+    label: "Недавно обновленные",
+    sorting: { field: "updatedAt", type: "DESC" },
+  },
+];
 
 export default function Home() {
   const { token, isReady } = useAuth();
@@ -26,9 +66,18 @@ export default function Home() {
     total: 0,
   });
   const [page, setPage] = useState(1);
+  const [sortValue, setSortValue] =
+    useState<ProductSortValue>("createdAt-desc");
   const [reloadKey, setReloadKey] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+
+  const activeSorting = useMemo(
+    () =>
+      SORT_OPTIONS.find((option) => option.value === sortValue)?.sorting ??
+      SORT_OPTIONS[0].sorting,
+    [sortValue]
+  );
 
   const totalPages = useMemo(
     () => Math.max(1, Math.ceil(pagination.total / pagination.pageSize)),
@@ -53,10 +102,7 @@ export default function Home() {
               pageNumber: page,
               pageSize: PAGE_SIZE,
             },
-            sorting: {
-              field: "createdAt",
-              type: "DESC",
-            },
+            sorting: activeSorting,
           },
           token ?? undefined
         );
@@ -86,10 +132,15 @@ export default function Home() {
     return () => {
       isIgnored = true;
     };
-  }, [isReady, page, reloadKey, token]);
+  }, [activeSorting, isReady, page, reloadKey, token]);
 
   function handleReload() {
     setReloadKey((currentKey) => currentKey + 1);
+  }
+
+  function handleSortChange(nextSortValue: ProductSortValue) {
+    setSortValue(nextSortValue);
+    setPage(1);
   }
 
   return (
@@ -121,6 +172,30 @@ export default function Home() {
               </Link>
             ) : null}
           </div>
+        </div>
+
+        <div className="mt-5 flex flex-col gap-3 rounded-lg border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <ArrowDownUp className="size-4 text-muted-foreground" aria-hidden="true" />
+            Сортировка
+          </div>
+          <label className="flex flex-col gap-2 text-sm sm:w-72">
+            <span className="sr-only">Сортировка товаров</span>
+            <select
+              className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              value={sortValue}
+              onChange={(event) =>
+                handleSortChange(event.target.value as ProductSortValue)
+              }
+              disabled={isLoading}
+            >
+              {SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
 
         {error ? (
