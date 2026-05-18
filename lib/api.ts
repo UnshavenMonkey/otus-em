@@ -54,11 +54,35 @@ export type ListResponse<T> = {
 
 type ProductsFilters = {
   name?: string;
+  categoryIds?: string[];
   pagination?: {
     pageSize?: number;
     pageNumber?: number;
   };
   sorting?: Sorting;
+};
+
+type CategoriesFilters = {
+  name?: string;
+  pagination?: {
+    pageSize?: number;
+    pageNumber?: number;
+  };
+  sorting?: Sorting;
+};
+
+export type ProductBody = {
+  name: string;
+  photo?: string;
+  desc?: string;
+  oldPrice?: number;
+  price: number;
+  categoryId: string;
+};
+
+export type CategoryBody = {
+  name: string;
+  photo?: string;
 };
 
 type SignUpBody = {
@@ -86,7 +110,7 @@ type ChangePasswordResult = {
 };
 
 type RequestOptions = {
-  method?: "GET" | "POST" | "PUT" | "PATCH";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   token?: string;
   body?: unknown;
 };
@@ -208,5 +232,58 @@ export function getProducts(filters: ProductsFilters = {}, token?: string) {
 
   return request<ListResponse<Product>>(path, {
     token,
+  });
+}
+
+export function getProduct(id: string, token?: string) {
+  return request<Product>(`/products/${id}`, {
+    token,
+  });
+}
+
+export function createProduct(token: string, body: ProductBody) {
+  return request<Product>("/products", {
+    method: "POST",
+    token,
+    body,
+  });
+}
+
+export function updateProduct(token: string, id: string, body: ProductBody) {
+  return request<Product>(`/products/${id}`, {
+    method: "PATCH",
+    token,
+    body,
+  });
+}
+
+export function getCategories(filters: CategoriesFilters = {}, token?: string) {
+  const search = toSearchParams(filters);
+  const path = search ? `/categories?${search}` : "/categories";
+
+  return request<ListResponse<Category>>(path, {
+    token,
+  });
+}
+
+export function getCategory(id: string, token?: string) {
+  return request<Category>(`/categories/${id}`, {
+    token,
+  });
+}
+
+export function createCategory(token: string, body: CategoryBody) {
+  return request<Category>("/categories", {
+    method: "POST",
+    token,
+    body,
+  });
+}
+
+export function updateCategory(token: string, id: string, body: CategoryBody) {
+  return request<Category>(`/categories/${id}`, {
+    method: "PATCH",
+    token,
+    body,
   });
 }

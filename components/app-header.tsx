@@ -1,8 +1,8 @@
 "use client";
 
+import { ListTree, LogOut, ShoppingBag, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LogOut, ShoppingBag, User } from "lucide-react";
 
 import { useAuth } from "@/components/auth-provider";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -18,15 +18,22 @@ export function AppHeader() {
 
   return (
     <header className="border-b bg-background">
-      <div className="mx-auto flex h-16 w-full max-w-6xl items-center justify-between px-6">
+      <div className="mx-auto flex min-h-16 w-full max-w-6xl flex-col gap-3 px-6 py-3 sm:flex-row sm:items-center sm:justify-between">
         <Link href="/" className="flex items-center gap-2 font-semibold">
           <ShoppingBag className="size-5" aria-hidden="true" />
           <span>Market Diploma</span>
         </Link>
 
-        <nav className="flex items-center gap-2">
+        <nav className="flex flex-wrap items-center gap-2">
           {isAuthorized ? (
             <>
+              <Link
+                className={buttonVariants({ variant: "ghost" })}
+                href="/categories"
+              >
+                <ListTree aria-hidden="true" />
+                Категории
+              </Link>
               <Link
                 className={buttonVariants({ variant: "ghost" })}
                 href="/profile"
@@ -57,4 +64,3 @@ export function AppHeader() {
     </header>
   );
 }
-

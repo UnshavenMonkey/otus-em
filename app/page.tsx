@@ -1,10 +1,18 @@
 "use client";
 
-import { ChevronLeft, ChevronRight, ImageOff, RefreshCw } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Edit,
+  ImageOff,
+  Plus,
+  RefreshCw,
+} from "lucide-react";
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/components/auth-provider";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { getProducts, type Pagination, type Product } from "@/lib/api";
 
 const PAGE_SIZE = 8;
@@ -101,10 +109,18 @@ export default function Home() {
             </p>
           </div>
 
-          <Button variant="outline" onClick={handleReload} disabled={isLoading}>
-            <RefreshCw aria-hidden="true" />
-            Обновить
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleReload} disabled={isLoading}>
+              <RefreshCw aria-hidden="true" />
+              Обновить
+            </Button>
+            {token ? (
+              <Link className={buttonVariants()} href="/products/new">
+                <Plus aria-hidden="true" />
+                Добавить
+              </Link>
+            ) : null}
+          </div>
         </div>
 
         {error ? (
@@ -118,7 +134,11 @@ export default function Home() {
         ) : products.length ? (
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard
+                key={product.id}
+                product={product}
+                canEdit={Boolean(token)}
+              />
             ))}
           </div>
         ) : (
@@ -142,7 +162,9 @@ export default function Home() {
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
-              onClick={() => setPage((currentPage) => Math.max(1, currentPage - 1))}
+              onClick={() =>
+                setPage((currentPage) => Math.max(1, currentPage - 1))
+              }
               disabled={isLoading || page <= 1}
             >
               <ChevronLeft aria-hidden="true" />
@@ -165,7 +187,13 @@ export default function Home() {
   );
 }
 
-function ProductCard({ product }: { product: Product }) {
+function ProductCard({
+  product,
+  canEdit,
+}: {
+  product: Product;
+  canEdit: boolean;
+}) {
   const price = new Intl.NumberFormat("ru-RU", {
     style: "currency",
     currency: "RUB",
@@ -195,13 +223,24 @@ function ProductCard({ product }: { product: Product }) {
         )}
       </div>
       <div className="space-y-3 p-4">
-        <div>
-          <p className="text-xs text-muted-foreground">
-            {product.category?.name ?? "Без категории"}
-          </p>
-          <h2 className="mt-1 line-clamp-2 min-h-10 text-base font-semibold">
-            {product.name}
-          </h2>
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs text-muted-foreground">
+              {product.category?.name ?? "Без категории"}
+            </p>
+            <h2 className="mt-1 line-clamp-2 min-h-10 text-base font-semibold">
+              {product.name}
+            </h2>
+          </div>
+          {canEdit ? (
+            <Link
+              className={buttonVariants({ variant: "outline", size: "icon-sm" })}
+              href={`/products/${product.id}/edit`}
+              aria-label="Редактировать товар"
+            >
+              <Edit aria-hidden="true" />
+            </Link>
+          ) : null}
         </div>
 
         {product.desc ? (
