@@ -6,16 +6,30 @@ export function getStoredToken() {
     return null;
   }
 
-  return window.localStorage.getItem(TOKEN_KEY);
+  try {
+    return window.localStorage.getItem(TOKEN_KEY);
+  } catch {
+    return null;
+  }
 }
 
 export function setStoredToken(token: string) {
-  window.localStorage.setItem(TOKEN_KEY, token);
+  try {
+    window.localStorage.setItem(TOKEN_KEY, token);
+  } catch {
+    return;
+  }
+
   window.dispatchEvent(new Event(TOKEN_EVENT));
 }
 
 export function removeStoredToken() {
-  window.localStorage.removeItem(TOKEN_KEY);
+  try {
+    window.localStorage.removeItem(TOKEN_KEY);
+  } catch {
+    return;
+  }
+
   window.dispatchEvent(new Event(TOKEN_EVENT));
 }
 
@@ -32,4 +46,3 @@ export function subscribeToTokenChange(listener: () => void) {
     window.removeEventListener("storage", listener);
   };
 }
-

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth-provider";
 import { CategoryForm } from "@/components/category-form";
+import { LoadingState } from "@/components/loading-state";
 import { getCategory, type Category } from "@/lib/api";
 
 export default function EditCategoryPage() {
@@ -62,11 +63,7 @@ export default function EditCategoryPage() {
   }, [isReady, params.id, token]);
 
   if (!isReady || !isAuthorized || isLoading) {
-    return (
-      <main className="flex flex-1 items-center justify-center px-6 py-12">
-        <p className="text-sm text-muted-foreground">Загружаем категорию...</p>
-      </main>
-    );
+    return <LoadingState text="Загружаем категорию..." />;
   }
 
   if (error || !category) {

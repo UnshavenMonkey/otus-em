@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth-provider";
+import { LoadingState } from "@/components/loading-state";
 import { ProductForm } from "@/components/product-form";
 import { getProduct, type Product } from "@/lib/api";
 
@@ -61,11 +62,7 @@ export default function EditProductPage() {
   }, [isReady, params.id, token]);
 
   if (!isReady || !isAuthorized || isLoading) {
-    return (
-      <main className="flex flex-1 items-center justify-center px-6 py-12">
-        <p className="text-sm text-muted-foreground">Загружаем товар...</p>
-      </main>
-    );
+    return <LoadingState text="Загружаем товар..." />;
   }
 
   if (error || !product) {

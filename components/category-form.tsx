@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import type { ComponentProps } from "react";
 
 import { useAuth } from "@/components/auth-provider";
+import { LoadingState } from "@/components/loading-state";
 import { Button } from "@/components/ui/button";
 import {
   createCategory,
@@ -76,13 +77,7 @@ export function CategoryForm({ category }: { category?: Category }) {
   };
 
   if (!isReady || !isAuthorized) {
-    return (
-      <main className="flex flex-1 items-center justify-center px-6 py-12">
-        <p className="text-sm text-muted-foreground">
-          Проверяем авторизацию...
-        </p>
-      </main>
-    );
+    return <LoadingState text="Проверяем авторизацию..." />;
   }
 
   return (

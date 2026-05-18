@@ -7,6 +7,7 @@ import type { ComponentProps } from "react";
 
 import { AuthCard } from "@/components/auth-card";
 import { useAuth } from "@/components/auth-provider";
+import { LoadingState } from "@/components/loading-state";
 import { Button } from "@/components/ui/button";
 
 type FormSubmitHandler = NonNullable<ComponentProps<"form">["onSubmit"]>;
@@ -43,6 +44,10 @@ export default function SignInPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (!isReady) {
+    return <LoadingState text="Проверяем сессию..." />;
+  }
 
   return (
     <AuthCard

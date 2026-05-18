@@ -1,6 +1,6 @@
 "use client";
 
-import { ListTree, LogOut, ShoppingBag, User } from "lucide-react";
+import { ListTree, LoaderCircle, LogOut, ShoppingBag, User } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -9,7 +9,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 
 export function AppHeader() {
   const router = useRouter();
-  const { isAuthorized, profile, signOut } = useAuth();
+  const { isAuthorized, isReady, profile, signOut } = useAuth();
 
   function handleSignOut() {
     signOut();
@@ -25,7 +25,12 @@ export function AppHeader() {
         </Link>
 
         <nav className="flex flex-wrap items-center gap-2">
-          {isAuthorized ? (
+          {!isReady ? (
+            <div className="flex h-9 items-center gap-2 px-3 text-sm text-muted-foreground">
+              <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />
+              <span>Проверяем сессию...</span>
+            </div>
+          ) : isAuthorized ? (
             <>
               <Link
                 className={buttonVariants({ variant: "ghost" })}
