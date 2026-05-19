@@ -9,7 +9,9 @@ import {
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
-import { buttonVariants } from "@/components/ui/button";
+import { ButtonVariants, buttonVariants } from "@/components/ui/button";
+import { formatCurrency } from "@/lib/formatters";
+import { AppRoutes } from "@/lib/routes";
 import {
   getOrders,
   ORDER_STATUSES,
@@ -19,23 +21,29 @@ import {
   type OrderStatus,
 } from "@/lib/orders";
 
-const currencyFormatter = new Intl.NumberFormat("ru-RU", {
-  style: "currency",
-  currency: "RUB",
-  maximumFractionDigits: 0,
-});
-
 const dateFormatter = new Intl.DateTimeFormat("ru-RU", {
   dateStyle: "medium",
   timeStyle: "short",
 });
 
+const ALL_STATUSES_FILTER = "Все";
+type StatusFilter = OrderStatus | typeof ALL_STATUSES_FILTER;
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [statusFilter, setStatusFilter] =
+    useState<StatusFilter>(ALL_STATUSES_FILTER);
   const totalOrders = orders.length;
   const totalSpent = useMemo(
     () => orders.reduce((sum, order) => sum + order.total, 0),
     [orders]
+  );
+  const filteredOrders = useMemo(
+    () =>
+      statusFilter === ALL_STATUSES_FILTER
+        ? orders
+        : orders.filter((order) => order.status === statusFilter),
+    [orders, statusFilter]
   );
 
   useEffect(() => {
@@ -70,7 +78,10 @@ export default function OrdersPage() {
             </p>
           </div>
 
-          <Link className={buttonVariants({ variant: "outline" })} href="/">
+          <Link
+            className={buttonVariants({ variant: ButtonVariants.Outline })}
+            href={AppRoutes.Home}
+          >
             <ShoppingBag aria-hidden="true" />
             В каталог
           </Link>
@@ -86,19 +97,59 @@ export default function OrdersPage() {
               <div className="rounded-lg border bg-card p-5">
                 <p className="text-sm text-muted-foreground">Общая стоимость</p>
                 <p className="mt-2 text-2xl font-semibold">
-                  {currencyFormatter.format(totalSpent)}
+                  {formatCurrency(totalSpent)}
                 </p>
               </div>
             </div>
 
+            <div className="mt-6 flex flex-col gap-3 rounded-lg border bg-card p-4 sm:flex-row sm:items-end sm:justify-between">
+              <label className="w-full space-y-2 sm:max-w-xs">
+                <span className="text-sm font-medium">Фильтр по статусу</span>
+                <select
+                  className="h-10 w-full cursor-pointer rounded-md border bg-background px-3 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  value={statusFilter}
+                  onChange={(event) =>
+                    setStatusFilter(event.target.value as StatusFilter)
+                  }
+                >
+                  <option value={ALL_STATUSES_FILTER}>
+                    {ALL_STATUSES_FILTER}
+                  </option>
+                  {ORDER_STATUSES.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="text-sm text-muted-foreground">
+                Показано: {filteredOrders.length} из {totalOrders}
+              </p>
+            </div>
+
             <div className="mt-6 space-y-4">
-              {orders.map((order) => (
-                <OrderCard
-                  key={order.id}
-                  order={order}
-                  onStatusChange={handleStatusChange}
-                />
-              ))}
+              {filteredOrders.length ? (
+                filteredOrders.map((order) => (
+                  <OrderCard
+                    key={order.id}
+                    order={order}
+                    onStatusChange={handleStatusChange}
+                  />
+                ))
+              ) : (
+                <div className="rounded-lg border bg-card p-8 text-center">
+                  <ClipboardList
+                    className="mx-auto size-8 text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                  <h2 className="mt-4 text-base font-semibold">
+                    Заказов с таким статусом нет
+                  </h2>
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Выберите другой статус или покажите все заказы.
+                  </p>
+                </div>
+              )}
             </div>
           </>
         ) : (
@@ -111,7 +162,10 @@ export default function OrdersPage() {
             <p className="mt-2 text-sm text-muted-foreground">
               Оформите корзину, и заказ появится на этой странице.
             </p>
-            <Link className={buttonVariants({ className: "mt-5" })} href="/cart">
+            <Link
+              className={buttonVariants({ className: "mt-5" })}
+              href={AppRoutes.Cart}
+            >
               <ShoppingBag aria-hidden="true" />
               Перейти в корзину
             </Link>
@@ -164,7 +218,7 @@ function OrderCard({
             {order.quantity} товар(ов)
           </p>
           <p className="mt-1 text-xl font-semibold">
-            {currencyFormatter.format(order.total)}
+            {formatCurrency(order.total)}
           </p>
         </div>
       </div>
@@ -205,7 +259,7 @@ function OrderCard({
               {item.quantity} шт.
             </p>
             <p className="font-medium sm:text-right">
-              {currencyFormatter.format(item.price * item.quantity)}
+              {formatCurrency(item.price * item.quantity)}
             </p>
           </div>
         ))}

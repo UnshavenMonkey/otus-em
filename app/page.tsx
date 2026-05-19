@@ -2,80 +2,56 @@
 
 import {
   ArrowDownUp,
-  ChevronLeft,
-  ChevronRight,
-  Edit,
   ImageOff,
   Plus,
   RefreshCw,
-  ShoppingCart,
 } from "lucide-react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import {
+  CATALOG_SEARCH_PARAMS,
+  DEFAULT_PAGE_SIZE,
+  PAGE_SIZE_OPTIONS,
+  SORT_OPTIONS,
+} from "@/app/_components/catalog/constants";
+import { CatalogPagination } from "@/app/_components/catalog/catalog-pagination";
+import { ProductCard } from "@/app/_components/catalog/product-card";
+import { ProductsSkeleton } from "@/app/_components/catalog/products-skeleton";
+import { ProductSortValue } from "@/app/_components/catalog/types";
+import { getProductSortValue } from "@/app/_components/catalog/utils";
 import { useAuth } from "@/components/auth-provider";
-import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  Button,
+  ButtonVariants,
+  buttonVariants,
+} from "@/components/ui/button";
 import {
   getProducts,
   getRequestErrorMessage,
   type Pagination,
   type Product,
-  type Sorting,
 } from "@/lib/api";
-import { addProductToCart } from "@/lib/cart";
-
-const PAGE_SIZE = 8;
-
-type ProductSortValue =
-  | "createdAt-desc"
-  | "createdAt-asc"
-  | "name-asc"
-  | "name-desc"
-  | "updatedAt-desc";
-
-const SORT_OPTIONS: Array<{
-  value: ProductSortValue;
-  label: string;
-  sorting: Sorting;
-}> = [
-  {
-    value: "createdAt-desc",
-    label: "Сначала новые",
-    sorting: { field: "createdAt", type: "DESC" },
-  },
-  {
-    value: "createdAt-asc",
-    label: "Сначала старые",
-    sorting: { field: "createdAt", type: "ASC" },
-  },
-  {
-    value: "name-asc",
-    label: "Название: А-Я",
-    sorting: { field: "name", type: "ASC" },
-  },
-  {
-    value: "name-desc",
-    label: "Название: Я-А",
-    sorting: { field: "name", type: "DESC" },
-  },
-  {
-    value: "updatedAt-desc",
-    label: "Недавно обновленные",
-    sorting: { field: "updatedAt", type: "DESC" },
-  },
-];
+import { AppRoutes } from "@/lib/routes";
 
 export default function Home() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { token, isReady } = useAuth();
   const [products, setProducts] = useState<Product[]>([]);
   const [pagination, setPagination] = useState<Pagination>({
     pageNumber: 1,
-    pageSize: PAGE_SIZE,
+    pageSize: DEFAULT_PAGE_SIZE,
     total: 0,
   });
   const [page, setPage] = useState(1);
-  const [sortValue, setSortValue] =
-    useState<ProductSortValue>("createdAt-desc");
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const sortValue = useMemo(
+    () => getProductSortValue(searchParams.get(CATALOG_SEARCH_PARAMS.Sort)),
+    [searchParams]
+  );
   const [reloadKey, setReloadKey] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -108,7 +84,7 @@ export default function Home() {
           {
             pagination: {
               pageNumber: page,
-              pageSize: PAGE_SIZE,
+              pageSize,
             },
             sorting: activeSorting,
           },
@@ -138,15 +114,36 @@ export default function Home() {
     return () => {
       isIgnored = true;
     };
-  }, [activeSorting, isReady, page, reloadKey, token]);
+  }, [activeSorting, isReady, page, pageSize, reloadKey, token]);
 
   function handleReload() {
     setReloadKey((currentKey) => currentKey + 1);
   }
 
   function handleSortChange(nextSortValue: ProductSortValue) {
-    setSortValue(nextSortValue);
     setPage(1);
+
+    const nextSearchParams = new URLSearchParams(searchParams);
+
+    if (nextSortValue === ProductSortValue.CreatedAtDesc) {
+      nextSearchParams.delete(CATALOG_SEARCH_PARAMS.Sort);
+    } else {
+      nextSearchParams.set(CATALOG_SEARCH_PARAMS.Sort, nextSortValue);
+    }
+
+    const search = nextSearchParams.toString();
+    router.replace(search ? `${pathname}?${search}` : pathname, {
+      scroll: false,
+    });
+  }
+
+  function handlePageSizeChange(nextPageSize: number) {
+    setPageSize(nextPageSize);
+    setPage(1);
+  }
+
+  function handlePageChange(nextPage: number) {
+    setPage(Math.min(totalPages, Math.max(1, nextPage)));
   }
 
   return (
@@ -160,19 +157,19 @@ export default function Home() {
             <h1 className="mt-2 text-3xl font-semibold tracking-normal">
               Список товаров
             </h1>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Главный экран показывает товары из API. После входа будут
-              отображаться данные вашей команды.
-            </p>
           </div>
 
           <div className="flex gap-2">
-            <Button variant="outline" onClick={handleReload} disabled={isLoading}>
+            <Button
+              variant={ButtonVariants.Outline}
+              onClick={handleReload}
+              disabled={isLoading}
+            >
               <RefreshCw aria-hidden="true" />
               Обновить
             </Button>
             {token ? (
-              <Link className={buttonVariants()} href="/products/new">
+              <Link className={buttonVariants()} href={AppRoutes.ProductsNew}>
                 <Plus aria-hidden="true" />
                 Добавить
               </Link>
@@ -211,7 +208,7 @@ export default function Home() {
         ) : null}
 
         {isLoading ? (
-          <ProductsSkeleton />
+          <ProductsSkeleton count={pageSize} />
         ) : products.length ? (
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {products.map((product) => (
@@ -235,147 +232,17 @@ export default function Home() {
           </div>
         )}
 
-        <div className="mt-6 flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-sm text-muted-foreground">
-            Страница {pagination.pageNumber} из {totalPages}. Всего товаров:{" "}
-            {pagination.total}
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() =>
-                setPage((currentPage) => Math.max(1, currentPage - 1))
-              }
-              disabled={isLoading || page <= 1}
-            >
-              <ChevronLeft aria-hidden="true" />
-              Назад
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() =>
-                setPage((currentPage) => Math.min(totalPages, currentPage + 1))
-              }
-              disabled={isLoading || page >= totalPages}
-            >
-              Вперед
-              <ChevronRight aria-hidden="true" />
-            </Button>
-          </div>
-        </div>
+        <CatalogPagination
+          page={pagination.pageNumber}
+          pageSize={pageSize}
+          pageSizeOptions={PAGE_SIZE_OPTIONS}
+          total={pagination.total}
+          totalPages={totalPages}
+          isLoading={isLoading}
+          onPageChange={handlePageChange}
+          onPageSizeChange={handlePageSizeChange}
+        />
       </section>
     </main>
-  );
-}
-
-function ProductCard({
-  product,
-  canEdit,
-}: {
-  product: Product;
-  canEdit: boolean;
-}) {
-  const [isAdded, setIsAdded] = useState(false);
-  const price = new Intl.NumberFormat("ru-RU", {
-    style: "currency",
-    currency: "RUB",
-    maximumFractionDigits: 0,
-  }).format(product.price);
-  const oldPrice =
-    typeof product.oldPrice === "number"
-      ? new Intl.NumberFormat("ru-RU", {
-          style: "currency",
-          currency: "RUB",
-          maximumFractionDigits: 0,
-        }).format(product.oldPrice)
-      : null;
-
-  function handleAddToCart() {
-    addProductToCart(product);
-    setIsAdded(true);
-    window.setTimeout(() => setIsAdded(false), 1200);
-  }
-
-  return (
-    <article className="overflow-hidden rounded-lg border bg-card shadow-sm">
-      <div className="flex aspect-[4/3] items-center justify-center bg-muted">
-        {product.photo ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            className="h-full w-full object-cover"
-            src={product.photo}
-            alt={product.name}
-          />
-        ) : (
-          <ImageOff className="size-8 text-muted-foreground" aria-hidden="true" />
-        )}
-      </div>
-      <div className="space-y-3 p-4">
-        <div className="flex items-start gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-xs text-muted-foreground">
-              {product.category?.name ?? "Без категории"}
-            </p>
-            <h2 className="mt-1 line-clamp-2 min-h-10 text-base font-semibold">
-              {product.name}
-            </h2>
-          </div>
-          {canEdit ? (
-            <Link
-              className={buttonVariants({ variant: "outline", size: "icon-sm" })}
-              href={`/products/${product.id}/edit`}
-              aria-label="Редактировать товар"
-            >
-              <Edit aria-hidden="true" />
-            </Link>
-          ) : null}
-        </div>
-
-        {product.desc ? (
-          <p className="line-clamp-2 min-h-10 text-sm leading-5 text-muted-foreground">
-            {product.desc}
-          </p>
-        ) : (
-          <p className="min-h-10 text-sm leading-5 text-muted-foreground">
-            Описание не указано
-          </p>
-        )}
-
-        <div className="flex items-baseline gap-2">
-          <span className="text-lg font-semibold">{price}</span>
-          {oldPrice ? (
-            <span className="text-sm text-muted-foreground line-through">
-              {oldPrice}
-            </span>
-          ) : null}
-        </div>
-
-        <Button className="w-full" onClick={handleAddToCart}>
-          <ShoppingCart aria-hidden="true" />
-          {isAdded ? "Добавлено" : "В корзину"}
-        </Button>
-      </div>
-    </article>
-  );
-}
-
-function ProductsSkeleton() {
-  return (
-    <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {Array.from({ length: PAGE_SIZE }).map((_, index) => (
-        <div
-          className="overflow-hidden rounded-lg border bg-card shadow-sm"
-          key={index}
-        >
-          <div className="aspect-[4/3] animate-pulse bg-muted" />
-          <div className="space-y-3 p-4">
-            <div className="h-3 w-24 animate-pulse rounded bg-muted" />
-            <div className="h-5 w-3/4 animate-pulse rounded bg-muted" />
-            <div className="h-10 animate-pulse rounded bg-muted" />
-            <div className="h-6 w-20 animate-pulse rounded bg-muted" />
-          </div>
-        </div>
-      ))}
-    </div>
   );
 }

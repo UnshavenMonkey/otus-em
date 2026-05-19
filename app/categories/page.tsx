@@ -5,8 +5,14 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth-provider";
-import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  Button,
+  ButtonSizes,
+  ButtonVariants,
+  buttonVariants,
+} from "@/components/ui/button";
 import { getCategories, getRequestErrorMessage, type Category } from "@/lib/api";
+import { AppRoutes } from "@/lib/routes";
 
 export default function CategoriesPage() {
   const { token, isReady, isAuthorized } = useAuth();
@@ -76,7 +82,10 @@ export default function CategoriesPage() {
           <p className="mt-2 text-sm text-muted-foreground">
             Категории создаются и редактируются только в аккаунте.
           </p>
-          <Link className={buttonVariants({ className: "mt-4" })} href="/signin">
+          <Link
+            className={buttonVariants({ className: "mt-4" })}
+            href={AppRoutes.SignIn}
+          >
             Войти
           </Link>
         </div>
@@ -101,14 +110,14 @@ export default function CategoriesPage() {
 
           <div className="flex gap-2">
             <Button
-              variant="outline"
+              variant={ButtonVariants.Outline}
               onClick={() => setReloadKey((currentKey) => currentKey + 1)}
               disabled={isLoading}
             >
               <RefreshCw aria-hidden="true" />
               Обновить
             </Button>
-            <Link className={buttonVariants()} href="/categories/new">
+            <Link className={buttonVariants()} href={AppRoutes.CategoryNew}>
               <Plus aria-hidden="true" />
               Добавить
             </Link>
@@ -159,8 +168,11 @@ export default function CategoriesPage() {
                   </p>
                 </div>
                 <Link
-                  className={buttonVariants({ variant: "outline", size: "icon" })}
-                  href={`/categories/${category.id}/edit`}
+                  className={buttonVariants({
+                    variant: ButtonVariants.Outline,
+                    size: ButtonSizes.Icon,
+                  })}
+                  href={AppRoutes.CategoryEdit(category.id)}
                   aria-label="Редактировать категорию"
                   title="Редактировать"
                 >
@@ -175,7 +187,10 @@ export default function CategoriesPage() {
             <p className="mt-2 text-sm text-muted-foreground">
               Создайте первую категорию, чтобы использовать ее в товарах.
             </p>
-            <Link className={buttonVariants({ className: "mt-4" })} href="/categories/new">
+            <Link
+              className={buttonVariants({ className: "mt-4" })}
+              href={AppRoutes.CategoryNew}
+            >
               <Plus aria-hidden="true" />
               Добавить категорию
             </Link>

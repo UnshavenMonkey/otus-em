@@ -8,8 +8,9 @@ import type { ComponentProps } from "react";
 
 import { useAuth } from "@/components/auth-provider";
 import { LoadingState } from "@/components/loading-state";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button, ButtonVariants, buttonVariants } from "@/components/ui/button";
 import { getRequestErrorMessage, type Profile } from "@/lib/api";
+import { AppRoutes } from "@/lib/routes";
 
 type FormSubmitHandler = NonNullable<ComponentProps<"form">["onSubmit"]>;
 
@@ -20,7 +21,7 @@ export default function ProfilePage() {
 
   useEffect(() => {
     if (isReady && !isAuthorized) {
-      router.replace("/signin");
+      router.replace(AppRoutes.SignIn);
     }
   }, [isAuthorized, isReady, router]);
 
@@ -127,7 +128,10 @@ function ProfileContent({
               <dd className="mt-1 font-medium">{profile?.commandId}</dd>
             </div>
           </dl>
-          <Link className={buttonVariants({ className: "mt-6" })} href="/orders">
+          <Link
+            className={buttonVariants({ className: "mt-6" })}
+            href={AppRoutes.Orders}
+          >
             <PackageCheck aria-hidden="true" />
             Мои заказы
           </Link>
@@ -189,7 +193,7 @@ function ProfileContent({
               ) : null}
 
               <Button
-                variant="outline"
+                variant={ButtonVariants.Outline}
                 type="submit"
                 disabled={isChangingPassword}
               >

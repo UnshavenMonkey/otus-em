@@ -1,18 +1,19 @@
 "use client";
 
 import {
-  ImageOff,
-  Minus,
-  Plus,
   ShoppingBag,
   ShoppingCart,
-  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
-import { Button, buttonVariants } from "@/components/ui/button";
+import { CartSummary } from "@/app/cart/_components/cart-summary";
+import { CartRow } from "@/app/cart/_components/cart-row";
+import {
+  ButtonVariants,
+  buttonVariants,
+} from "@/components/ui/button";
 import {
   clearCart,
   getCartItems,
@@ -23,12 +24,7 @@ import {
   type CartItem,
 } from "@/lib/cart";
 import { createOrder } from "@/lib/orders";
-
-const currencyFormatter = new Intl.NumberFormat("ru-RU", {
-  style: "currency",
-  currency: "RUB",
-  maximumFractionDigits: 0,
-});
+import { AppRoutes } from "@/lib/routes";
 
 export default function CartPage() {
   const router = useRouter();
@@ -68,7 +64,7 @@ export default function CartPage() {
     createOrder(items);
     clearCart();
     setItems([]);
-    router.push("/orders");
+    router.push(AppRoutes.Orders);
   }
 
   return (
@@ -87,7 +83,10 @@ export default function CartPage() {
             </p>
           </div>
 
-          <Link className={buttonVariants({ variant: "outline" })} href="/">
+          <Link
+            className={buttonVariants({ variant: ButtonVariants.Outline })}
+            href={AppRoutes.Home}
+          >
             <ShoppingBag aria-hidden="true" />
             В каталог
           </Link>
@@ -115,44 +114,11 @@ export default function CartPage() {
               </div>
             </div>
 
-            <aside className="rounded-lg border bg-card p-5">
-              <div className="flex items-center gap-2 text-lg font-semibold">
-                <ShoppingCart className="size-5" aria-hidden="true" />
-                Итого
-              </div>
-
-              <dl className="mt-5 space-y-3 text-sm">
-                <div className="flex items-center justify-between gap-4">
-                  <dt className="text-muted-foreground">Товаров</dt>
-                  <dd className="font-medium">{summary.quantity}</dd>
-                </div>
-                <div className="flex items-center justify-between gap-4">
-                  <dt className="text-muted-foreground">Стоимость</dt>
-                  <dd className="font-medium">
-                    {currencyFormatter.format(summary.subtotal)}
-                  </dd>
-                </div>
-              </dl>
-
-              <div className="mt-5 border-t pt-5">
-                <div className="flex items-baseline justify-between gap-4">
-                  <span className="text-sm text-muted-foreground">К оплате</span>
-                  <strong className="text-2xl font-semibold">
-                    {currencyFormatter.format(summary.subtotal)}
-                  </strong>
-                </div>
-                <Button className="mt-5 w-full" onClick={handleCheckout}>
-                  Оформить заказ
-                </Button>
-                <Button
-                  className="mt-2 w-full"
-                  variant="outline"
-                  onClick={handleClear}
-                >
-                  Очистить корзину
-                </Button>
-              </div>
-            </aside>
+            <CartSummary
+              summary={summary}
+              onCheckout={handleCheckout}
+              onClear={handleClear}
+            />
           </div>
         ) : (
           <div className="mt-6 rounded-lg border bg-card p-10 text-center">
@@ -165,7 +131,10 @@ export default function CartPage() {
               Добавьте товары из каталога, чтобы увидеть их количество и
               стоимость здесь.
             </p>
-            <Link className={buttonVariants({ className: "mt-5" })} href="/">
+            <Link
+              className={buttonVariants({ className: "mt-5" })}
+              href={AppRoutes.Home}
+            >
               <ShoppingBag aria-hidden="true" />
               Перейти в каталог
             </Link>
@@ -173,83 +142,5 @@ export default function CartPage() {
         )}
       </section>
     </main>
-  );
-}
-
-function CartRow({
-  item,
-  onQuantityChange,
-  onRemove,
-}: {
-  item: CartItem;
-  onQuantityChange: (productId: string, quantity: number) => void;
-  onRemove: (productId: string) => void;
-}) {
-  const itemTotal = item.price * item.quantity;
-
-  return (
-    <article className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_150px_140px_48px] md:items-center">
-      <div className="flex min-w-0 gap-3">
-        <div className="flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
-          {item.photo ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              className="h-full w-full object-cover"
-              src={item.photo}
-              alt={item.name}
-            />
-          ) : (
-            <ImageOff className="size-6 text-muted-foreground" aria-hidden="true" />
-          )}
-        </div>
-        <div className="min-w-0">
-          <p className="text-xs text-muted-foreground">
-            {item.categoryName ?? "Без категории"}
-          </p>
-          <h2 className="mt-1 line-clamp-2 font-semibold">{item.name}</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {currencyFormatter.format(item.price)} за шт.
-          </p>
-        </div>
-      </div>
-
-      <div className="flex w-fit items-center rounded-lg border bg-background">
-        <Button
-          size="icon-sm"
-          variant="ghost"
-          onClick={() => onQuantityChange(item.productId, item.quantity - 1)}
-          disabled={item.quantity <= 1}
-          aria-label="Уменьшить количество"
-        >
-          <Minus aria-hidden="true" />
-        </Button>
-        <span className="min-w-10 text-center text-sm font-medium">
-          {item.quantity}
-        </span>
-        <Button
-          size="icon-sm"
-          variant="ghost"
-          onClick={() => onQuantityChange(item.productId, item.quantity + 1)}
-          disabled={item.quantity >= 99}
-          aria-label="Увеличить количество"
-        >
-          <Plus aria-hidden="true" />
-        </Button>
-      </div>
-
-      <div className="text-left font-semibold md:text-right">
-        {currencyFormatter.format(itemTotal)}
-      </div>
-
-      <Button
-        className="justify-self-start md:justify-self-end"
-        size="icon-sm"
-        variant="outline"
-        onClick={() => onRemove(item.productId)}
-        aria-label="Удалить товар"
-      >
-        <Trash2 aria-hidden="true" />
-      </Button>
-    </article>
   );
 }

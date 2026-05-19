@@ -25,19 +25,9 @@ import {
   setStoredToken,
   subscribeToTokenChange,
 } from "@/lib/auth-token";
-
-type AuthContextValue = {
-  token: string | null;
-  profile: Profile | null;
-  isReady: boolean;
-  isAuthorized: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
-  signOut: () => void;
-  refreshProfile: () => Promise<void>;
-  updateProfileName: (name: string) => Promise<void>;
-  changePassword: (password: string, newPassword: string) => Promise<void>;
-};
+import { SESSION_EXPIRED_MESSAGE } from "@/components/auth-provider/constants";
+import type { AuthContextValue } from "@/components/auth-provider/types";
+import { getAuthRequiredError } from "@/components/auth-provider/utils";
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
@@ -49,10 +39,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [authError, setAuthError] = useState("");
 
   const signOut = useCallback(() => {
     removeStoredToken();
     setProfile(null);
+  }, []);
+
+  const clearAuthError = useCallback(() => {
+    setAuthError("");
   }, []);
 
   const loadProfile = useCallback(
@@ -62,6 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setProfile(nextProfile);
       } catch (error) {
         signOut();
+        setAuthError(SESSION_EXPIRED_MESSAGE);
         throw error;
       }
     },
@@ -109,6 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsReady(false);
 
       try {
+        setAuthError("");
         setStoredToken(nextToken);
         await loadProfile(nextToken);
       } catch (error) {
@@ -148,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateProfileName = useCallback(
     async (name: string) => {
       if (!token) {
-        throw new Error("Нужно войти в аккаунт");
+        throw getAuthRequiredError();
       }
 
       const nextProfile = await updateProfileRequest(token, name);
@@ -160,7 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const changePassword = useCallback(
     async (password: string, newPassword: string) => {
       if (!token) {
-        throw new Error("Нужно войти в аккаунт");
+        throw getAuthRequiredError();
       }
 
       await changePasswordRequest(token, password, newPassword);
@@ -174,6 +171,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       profile,
       isReady,
       isAuthorized: Boolean(token),
+      authError,
+      clearAuthError,
       signIn,
       signUp,
       signOut,
@@ -185,6 +184,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       token,
       profile,
       isReady,
+      authError,
+      clearAuthError,
       signIn,
       signUp,
       signOut,

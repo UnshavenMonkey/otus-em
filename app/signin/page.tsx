@@ -11,12 +11,14 @@ import { useAuth } from "@/components/auth-provider";
 import { LoadingState } from "@/components/loading-state";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api";
+import { AppRoutes } from "@/lib/routes";
 
 type FormSubmitHandler = NonNullable<ComponentProps<"form">["onSubmit"]>;
 
 export default function SignInPage() {
   const router = useRouter();
-  const { isAuthorized, isReady, signIn } = useAuth();
+  const { authError, clearAuthError, isAuthorized, isReady, signIn } =
+    useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -24,18 +26,19 @@ export default function SignInPage() {
 
   useEffect(() => {
     if (isReady && isAuthorized) {
-      router.replace("/profile");
+      router.replace(AppRoutes.Profile);
     }
   }, [isAuthorized, isReady, router]);
 
   const handleSubmit: FormSubmitHandler = async (event) => {
     event.preventDefault();
     setError("");
+    clearAuthError();
     setIsSubmitting(true);
 
     try {
       await signIn(email.trim(), password);
-      router.push("/profile");
+      router.push(AppRoutes.Profile);
     } catch (caughtError) {
       setError(getSignInErrorMessage(caughtError));
     } finally {
@@ -77,13 +80,13 @@ export default function SignInPage() {
           />
         </label>
 
-        {error ? (
+        {authError || error ? (
           <div
             className="flex gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
             role="alert"
           >
             <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-            <p>{error}</p>
+            <p>{error || authError}</p>
           </div>
         ) : null}
 
@@ -94,7 +97,10 @@ export default function SignInPage() {
 
       <p className="mt-4 text-center text-sm text-muted-foreground">
         Нет аккаунта?{" "}
-        <Link className="font-medium text-foreground underline" href="/signup">
+        <Link
+          className="font-medium text-foreground underline"
+          href={AppRoutes.SignUp}
+        >
           Зарегистрироваться
         </Link>
       </p>

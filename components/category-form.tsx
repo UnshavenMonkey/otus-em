@@ -7,7 +7,7 @@ import type { ComponentProps } from "react";
 
 import { useAuth } from "@/components/auth-provider";
 import { LoadingState } from "@/components/loading-state";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonVariants } from "@/components/ui/button";
 import {
   createCategory,
   getRequestFieldErrors,
@@ -17,6 +17,7 @@ import {
   type CategoryBody,
   type FieldErrors,
 } from "@/lib/api";
+import { AppRoutes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 type FormSubmitHandler = NonNullable<ComponentProps<"form">["onSubmit"]>;
@@ -33,7 +34,7 @@ export function CategoryForm({ category }: { category?: Category }) {
 
   useEffect(() => {
     if (isReady && !isAuthorized) {
-      router.replace("/signin");
+      router.replace(AppRoutes.SignIn);
     }
   }, [isAuthorized, isReady, router]);
 
@@ -70,7 +71,7 @@ export function CategoryForm({ category }: { category?: Category }) {
         setMessage("Категория обновлена");
       } else {
         await createCategory(token, body);
-        router.replace("/categories");
+        router.replace(AppRoutes.Categories);
         router.refresh();
       }
     } catch (caughtError) {
@@ -186,8 +187,8 @@ export function CategoryForm({ category }: { category?: Category }) {
             </Button>
             <Button
               type="button"
-              variant="outline"
-              onClick={() => router.push("/categories")}
+              variant={ButtonVariants.Outline}
+              onClick={() => router.push(AppRoutes.Categories)}
             >
               <ArrowLeft aria-hidden="true" />
               К списку

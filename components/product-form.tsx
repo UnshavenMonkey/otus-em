@@ -7,7 +7,7 @@ import type { ComponentProps } from "react";
 
 import { useAuth } from "@/components/auth-provider";
 import { LoadingState } from "@/components/loading-state";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonVariants } from "@/components/ui/button";
 import {
   createCategory,
   createProduct,
@@ -20,6 +20,7 @@ import {
   type Product,
   type ProductBody,
 } from "@/lib/api";
+import { AppRoutes } from "@/lib/routes";
 import { cn } from "@/lib/utils";
 
 type FormSubmitHandler = NonNullable<ComponentProps<"form">["onSubmit"]>;
@@ -50,7 +51,7 @@ export function ProductForm({ product }: ProductFormProps) {
 
   useEffect(() => {
     if (isReady && !isAuthorized) {
-      router.replace("/signin");
+      router.replace(AppRoutes.SignIn);
     }
   }, [isAuthorized, isReady, router]);
 
@@ -150,12 +151,12 @@ export function ProductForm({ product }: ProductFormProps) {
     try {
       if (product) {
         await updateProduct(token, product.id, body);
-        setMessage("Товар обновлен");
       } else {
-        const createdProduct = await createProduct(token, body);
-        router.replace(`/products/${createdProduct.id}/edit`);
-        router.refresh();
+        await createProduct(token, body);
       }
+
+      router.replace(AppRoutes.Home);
+      router.refresh();
     } catch (caughtError) {
       setError(
         getRequestErrorMessage(caughtError, "Не удалось сохранить товар")
@@ -377,7 +378,7 @@ export function ProductForm({ product }: ProductFormProps) {
               />
               <Button
                 type="button"
-                variant="outline"
+                variant={ButtonVariants.Outline}
                 onClick={handleCreateCategory}
                 disabled={isCreatingCategory || !newCategoryName.trim()}
               >
@@ -401,7 +402,11 @@ export function ProductForm({ product }: ProductFormProps) {
               <Save aria-hidden="true" />
               {isSaving ? "Сохраняем..." : "Сохранить"}
             </Button>
-            <Button type="button" variant="outline" onClick={() => router.push("/")}>
+            <Button
+              type="button"
+              variant={ButtonVariants.Outline}
+              onClick={() => router.push(AppRoutes.Home)}
+            >
               Вернуться к списку
             </Button>
           </div>

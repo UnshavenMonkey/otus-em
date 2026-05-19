@@ -8,9 +8,18 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import { Theme, ThemeContextValue } from "./theme-provider/types";
-import { applyTheme, getThemeSnapshot, saveTheme, subscribeToThemeChange } from "./theme-provider/utils";
-import { DEFAULT_THEME } from "./theme-provider/constants";
+
+import { DEFAULT_THEME } from "@/components/theme-provider/constants";
+import type {
+  Theme,
+  ThemeContextValue,
+} from "@/components/theme-provider/types";
+import {
+  applyTheme,
+  getThemeSnapshot,
+  saveTheme,
+  subscribeToThemeChange,
+} from "@/components/theme-provider/utils";
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 

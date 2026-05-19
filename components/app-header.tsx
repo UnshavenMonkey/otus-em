@@ -13,41 +13,78 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useMemo, useSyncExternalStore } from "react";
 
 import { useAuth } from "@/components/auth-provider";
 import { useTheme } from "@/components/theme-provider";
-import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  Button,
+  ButtonSizes,
+  ButtonVariants,
+  buttonVariants,
+} from "@/components/ui/button";
+import {
+  getCartItemsFromSnapshot,
+  getCartSnapshot,
+  getCartSummary,
+  subscribeToCartChange,
+} from "@/lib/cart";
+import { AppRoutes } from "@/lib/routes";
 
 export function AppHeader() {
   const router = useRouter();
   const { isAuthorized, isReady, profile, signOut } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const cartSnapshot = useSyncExternalStore(
+    subscribeToCartChange,
+    getCartSnapshot,
+    () => ""
+  );
+  const cartItems = useMemo(
+    () => getCartItemsFromSnapshot(cartSnapshot),
+    [cartSnapshot]
+  );
+  const cartQuantity = useMemo(
+    () => getCartSummary(cartItems).quantity,
+    [cartItems]
+  );
 
   function handleSignOut() {
     signOut();
-    router.push("/");
+    router.push(AppRoutes.Home);
   }
 
   return (
     <header className="border-b bg-background">
       <div className="mx-auto flex min-h-16 w-full max-w-6xl flex-col gap-3 px-6 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <Link href="/" className="flex items-center gap-2 font-semibold">
+        <Link href={AppRoutes.Home} className="flex items-center gap-2 font-semibold">
           <ShoppingBag className="size-5" aria-hidden="true" />
           <span>Market Diploma</span>
         </Link>
 
         <nav className="flex flex-wrap items-center gap-2">
-          <Link className={buttonVariants({ variant: "ghost" })} href="/cart">
+          <Link
+            className={buttonVariants({ variant: ButtonVariants.Ghost })}
+            href={AppRoutes.Cart}
+          >
             <ShoppingCart aria-hidden="true" />
             Корзина
+            {cartQuantity ? (
+              <span className="ml-1 rounded-full bg-primary px-1.5 py-0.5 text-xs font-semibold leading-none text-primary-foreground">
+                {cartQuantity}
+              </span>
+            ) : null}
           </Link>
-          <Link className={buttonVariants({ variant: "ghost" })} href="/orders">
+          <Link
+            className={buttonVariants({ variant: ButtonVariants.Ghost })}
+            href={AppRoutes.Orders}
+          >
             <PackageCheck aria-hidden="true" />
             Заказы
           </Link>
           <Button
-            variant="ghost"
-            size="icon"
+            variant={ButtonVariants.Ghost}
+            size={ButtonSizes.Icon}
             onClick={toggleTheme}
             aria-label={
               theme === "dark"
@@ -75,20 +112,20 @@ export function AppHeader() {
           ) : isAuthorized ? (
             <>
               <Link
-                className={buttonVariants({ variant: "ghost" })}
-                href="/categories"
+                className={buttonVariants({ variant: ButtonVariants.Ghost })}
+                href={AppRoutes.Categories}
               >
                 <ListTree aria-hidden="true" />
                 Категории
               </Link>
               <Link
-                className={buttonVariants({ variant: "ghost" })}
-                href="/profile"
+                className={buttonVariants({ variant: ButtonVariants.Ghost })}
+                href={AppRoutes.Profile}
               >
                 <User aria-hidden="true" />
                 {profile?.name || "Профиль"}
               </Link>
-              <Button variant="outline" onClick={handleSignOut}>
+              <Button variant={ButtonVariants.Outline} onClick={handleSignOut}>
                 <LogOut aria-hidden="true" />
                 Выйти
               </Button>
@@ -96,12 +133,12 @@ export function AppHeader() {
           ) : (
             <>
               <Link
-                className={buttonVariants({ variant: "ghost" })}
-                href="/signin"
+                className={buttonVariants({ variant: ButtonVariants.Ghost })}
+                href={AppRoutes.SignIn}
               >
                 Войти
               </Link>
-              <Link className={buttonVariants()} href="/signup">
+              <Link className={buttonVariants()} href={AppRoutes.SignUp}>
                 Регистрация
               </Link>
             </>

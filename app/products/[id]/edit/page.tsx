@@ -7,6 +7,7 @@ import { useAuth } from "@/components/auth-provider";
 import { LoadingState } from "@/components/loading-state";
 import { ProductForm } from "@/components/product-form";
 import { getProduct, getRequestErrorMessage, type Product } from "@/lib/api";
+import { AppRoutes } from "@/lib/routes";
 
 export default function EditProductPage() {
   const params = useParams<{ id: string }>();
@@ -18,7 +19,7 @@ export default function EditProductPage() {
 
   useEffect(() => {
     if (isReady && !isAuthorized) {
-      router.replace("/signin");
+      router.replace(AppRoutes.SignIn);
     }
   }, [isAuthorized, isReady, router]);
 

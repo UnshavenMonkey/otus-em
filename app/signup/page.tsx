@@ -11,6 +11,7 @@ import { useAuth } from "@/components/auth-provider";
 import { LoadingState } from "@/components/loading-state";
 import { Button } from "@/components/ui/button";
 import { ApiError } from "@/lib/api";
+import { AppRoutes } from "@/lib/routes";
 
 type FormSubmitHandler = NonNullable<ComponentProps<"form">["onSubmit"]>;
 
@@ -24,7 +25,7 @@ export default function SignUpPage() {
 
   useEffect(() => {
     if (isReady && isAuthorized) {
-      router.replace("/profile");
+      router.replace(AppRoutes.Profile);
     }
   }, [isAuthorized, isReady, router]);
 
@@ -35,7 +36,7 @@ export default function SignUpPage() {
 
     try {
       await signUp(email.trim(), password);
-      router.push("/profile");
+      router.push(AppRoutes.Profile);
     } catch (caughtError) {
       setError(getSignUpErrorMessage(caughtError));
     } finally {
@@ -95,7 +96,10 @@ export default function SignUpPage() {
 
       <p className="mt-4 text-center text-sm text-muted-foreground">
         Уже есть аккаунт?{" "}
-        <Link className="font-medium text-foreground underline" href="/signin">
+        <Link
+          className="font-medium text-foreground underline"
+          href={AppRoutes.SignIn}
+        >
           Войти
         </Link>
       </p>
