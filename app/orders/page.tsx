@@ -1,41 +1,53 @@
 "use client";
 
-import {
-  ClipboardList,
-  ImageOff,
-  PackageCheck,
-  ShoppingBag,
-} from "lucide-react";
+import { ClipboardList, ShoppingBag } from "lucide-react";
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import {
+  ALL_STATUSES_FILTER,
+  ORDERS_PAGE_SIZE,
+  ORDERS_SEARCH_PARAMS,
+} from "@/app/orders/_components/constants";
+import { OrderCard } from "@/app/orders/_components/order-card";
+import type { StatusFilter } from "@/app/orders/_components/types";
+import {
+  getOrderStatusLabel,
+  getOrderTotal,
+  getStatusFilterValue,
+} from "@/app/orders/_components/utils";
+import { useAuth } from "@/components/auth-provider";
 import { ButtonVariants, buttonVariants } from "@/components/ui/button";
+import { getOrders, getRequestErrorMessage, updateOrder } from "@/lib/api";
+import { ORDER_STATUSES } from "@/lib/api/constants";
+import type { Order, OrderStatus } from "@/lib/api/types";
 import { formatCurrency } from "@/lib/formatters";
 import { AppRoutes } from "@/lib/routes";
-import {
-  getOrders,
-  ORDER_STATUSES,
-  subscribeToOrdersChange,
-  updateOrderStatus,
-  type Order,
-  type OrderStatus,
-} from "@/lib/orders";
-
-const dateFormatter = new Intl.DateTimeFormat("ru-RU", {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
-
-const ALL_STATUSES_FILTER = "Все";
-type StatusFilter = OrderStatus | typeof ALL_STATUSES_FILTER;
 
 export default function OrdersPage() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const { token, isReady } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [statusFilter, setStatusFilter] =
-    useState<StatusFilter>(ALL_STATUSES_FILTER);
+  const statusFilter = useMemo(
+    () =>
+      getStatusFilterValue(searchParams.get(ORDERS_SEARCH_PARAMS.Status)),
+    [searchParams]
+  );
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
   const totalOrders = orders.length;
   const totalSpent = useMemo(
-    () => orders.reduce((sum, order) => sum + order.total, 0),
+    () => orders.reduce((sum, order) => sum + getOrderTotal(order), 0),
+    [orders]
+  );
+  const orderStatusOptions = useMemo(
+    () =>
+      Array.from(
+        new Set([...ORDER_STATUSES, ...orders.map((order) => order.status)])
+      ),
     [orders]
   );
   const filteredOrders = useMemo(
@@ -47,18 +59,93 @@ export default function OrdersPage() {
   );
 
   useEffect(() => {
-    function syncOrders() {
-      setOrders(getOrders());
+    if (!isReady) {
+      return;
     }
 
-    syncOrders();
+    let isIgnored = false;
 
-    return subscribeToOrdersChange(syncOrders);
-  }, []);
+    async function loadOrders() {
+      setIsLoading(true);
+      setError("");
 
-  function handleStatusChange(orderId: string, status: OrderStatus) {
-    updateOrderStatus(orderId, status);
-    setOrders(getOrders());
+      try {
+        const result = await getOrders(
+          {
+            status:
+              statusFilter === ALL_STATUSES_FILTER
+                ? undefined
+                : statusFilter,
+            pagination: {
+              pageNumber: 1,
+              pageSize: ORDERS_PAGE_SIZE,
+            },
+            sorting: {
+              field: "createdAt",
+              type: "DESC",
+            },
+          },
+          token ?? undefined
+        );
+
+        if (!isIgnored) {
+          setOrders(result.data);
+        }
+      } catch (caughtError) {
+        if (!isIgnored) {
+          setOrders([]);
+          setError(
+            getRequestErrorMessage(caughtError, "Не удалось загрузить заказы")
+          );
+        }
+      } finally {
+        if (!isIgnored) {
+          setIsLoading(false);
+        }
+      }
+    }
+
+    loadOrders();
+
+    return () => {
+      isIgnored = true;
+    };
+  }, [isReady, statusFilter, token]);
+
+  async function handleStatusChange(orderId: string, status: OrderStatus) {
+    if (!token) {
+      setError("Нужно войти в аккаунт, чтобы изменить статус заказа.");
+      return;
+    }
+
+    setError("");
+
+    try {
+      const updatedOrder = await updateOrder(token, orderId, { status });
+      setOrders((currentOrders) =>
+        currentOrders.map((order) =>
+          order.id === orderId ? updatedOrder : order
+        )
+      );
+    } catch (caughtError) {
+      setError(
+        getRequestErrorMessage(caughtError, "Не удалось обновить статус заказа")
+      );
+    }
+  }
+
+  function handleStatusFilterChange(status: StatusFilter) {
+    const nextSearchParams = new URLSearchParams(searchParams.toString());
+
+    if (status === ALL_STATUSES_FILTER) {
+      nextSearchParams.delete(ORDERS_SEARCH_PARAMS.Status);
+    } else {
+      nextSearchParams.set(ORDERS_SEARCH_PARAMS.Status, status);
+    }
+
+    const query = nextSearchParams.toString();
+
+    router.push(query ? `${pathname}?${query}` : pathname);
   }
 
   return (
@@ -87,7 +174,22 @@ export default function OrdersPage() {
           </Link>
         </div>
 
-        {orders.length ? (
+        {error ? (
+          <div className="mt-6 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+            {error}
+          </div>
+        ) : null}
+
+        {isLoading ? (
+          <div className="mt-6 space-y-4">
+            {Array.from({ length: 3 }).map((_, index) => (
+              <div
+                className="h-32 animate-pulse rounded-lg border bg-muted"
+                key={index}
+              />
+            ))}
+          </div>
+        ) : orders.length ? (
           <>
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
               <div className="rounded-lg border bg-card p-5">
@@ -95,7 +197,9 @@ export default function OrdersPage() {
                 <p className="mt-2 text-2xl font-semibold">{totalOrders}</p>
               </div>
               <div className="rounded-lg border bg-card p-5">
-                <p className="text-sm text-muted-foreground">Общая стоимость</p>
+                <p className="text-sm text-muted-foreground">
+                  Общая стоимость
+                </p>
                 <p className="mt-2 text-2xl font-semibold">
                   {formatCurrency(totalSpent)}
                 </p>
@@ -109,15 +213,15 @@ export default function OrdersPage() {
                   className="h-10 w-full cursor-pointer rounded-md border bg-background px-3 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
                   value={statusFilter}
                   onChange={(event) =>
-                    setStatusFilter(event.target.value as StatusFilter)
+                    handleStatusFilterChange(event.target.value as StatusFilter)
                   }
                 >
                   <option value={ALL_STATUSES_FILTER}>
                     {ALL_STATUSES_FILTER}
                   </option>
-                  {ORDER_STATUSES.map((status) => (
+                  {orderStatusOptions.map((status) => (
                     <option key={status} value={status}>
-                      {status}
+                      {getOrderStatusLabel(status)}
                     </option>
                   ))}
                 </select>
@@ -133,6 +237,8 @@ export default function OrdersPage() {
                   <OrderCard
                     key={order.id}
                     order={order}
+                    statusOptions={orderStatusOptions}
+                    canUpdateStatus={Boolean(token)}
                     onStatusChange={handleStatusChange}
                   />
                 ))
@@ -173,97 +279,5 @@ export default function OrdersPage() {
         )}
       </section>
     </main>
-  );
-}
-
-function OrderCard({
-  order,
-  onStatusChange,
-}: {
-  order: Order;
-  onStatusChange: (orderId: string, status: OrderStatus) => void;
-}) {
-  return (
-    <article className="rounded-lg border bg-card">
-      <div className="grid gap-4 border-b p-5 md:grid-cols-[minmax(0,1fr)_220px_160px] md:items-center">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2 font-semibold">
-            <PackageCheck className="size-5 text-muted-foreground" aria-hidden="true" />
-            <span>Заказ #{order.id.slice(0, 8)}</span>
-          </div>
-          <p className="mt-2 text-sm text-muted-foreground">
-            {dateFormatter.format(new Date(order.createdAt))}
-          </p>
-        </div>
-
-        <label className="space-y-2">
-          <span className="text-sm font-medium">Статус</span>
-          <select
-            className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
-            value={order.status}
-            onChange={(event) =>
-              onStatusChange(order.id, event.target.value as OrderStatus)
-            }
-          >
-            {ORDER_STATUSES.map((status) => (
-              <option key={status} value={status}>
-                {status}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <div className="md:text-right">
-          <p className="text-sm text-muted-foreground">
-            {order.quantity} товар(ов)
-          </p>
-          <p className="mt-1 text-xl font-semibold">
-            {formatCurrency(order.total)}
-          </p>
-        </div>
-      </div>
-
-      <div className="divide-y">
-        {order.items.map((item) => (
-          <div
-            className="grid gap-3 p-4 sm:grid-cols-[minmax(0,1fr)_110px_140px] sm:items-center"
-            key={item.productId}
-          >
-            <div className="flex min-w-0 gap-3">
-              <div className="flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
-                {item.photo ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    className="h-full w-full object-cover"
-                    src={item.photo}
-                    alt={item.name}
-                  />
-                ) : (
-                  <ImageOff
-                    className="size-5 text-muted-foreground"
-                    aria-hidden="true"
-                  />
-                )}
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs text-muted-foreground">
-                  {item.categoryName ?? "Без категории"}
-                </p>
-                <h3 className="mt-1 line-clamp-2 text-sm font-medium">
-                  {item.name}
-                </h3>
-              </div>
-            </div>
-
-            <p className="text-sm text-muted-foreground sm:text-center">
-              {item.quantity} шт.
-            </p>
-            <p className="font-medium sm:text-right">
-              {formatCurrency(item.price * item.quantity)}
-            </p>
-          </div>
-        ))}
-      </div>
-    </article>
   );
 }

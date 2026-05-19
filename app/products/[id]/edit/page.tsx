@@ -5,9 +5,10 @@ import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth-provider";
 import { LoadingState } from "@/components/loading-state";
-import { ProductForm } from "@/components/product-form";
-import { getProduct, getRequestErrorMessage, type Product } from "@/lib/api";
+import { getProduct, getRequestErrorMessage } from "@/lib/api";
+import type { Product } from "@/lib/api/types";
 import { AppRoutes } from "@/lib/routes";
+import { ProductForm } from "@/components/product-form/index";
 
 export default function EditProductPage() {
   const params = useParams<{ id: string }>();

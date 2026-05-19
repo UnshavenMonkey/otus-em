@@ -8,17 +8,19 @@ import type { ComponentProps } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { LoadingState } from "@/components/loading-state";
 import { Button, ButtonVariants } from "@/components/ui/button";
+import { FieldErrorText } from "@/components/category-form/field-error-text";
+import {
+  getInputClassName,
+  validateCategoryForm,
+} from "@/components/category-form/utils";
 import {
   createCategory,
   getRequestFieldErrors,
   getRequestErrorMessage,
   updateCategory,
-  type Category,
-  type CategoryBody,
-  type FieldErrors,
 } from "@/lib/api";
+import type { Category, CategoryBody, FieldErrors } from "@/lib/api/types";
 import { AppRoutes } from "@/lib/routes";
-import { cn } from "@/lib/utils";
 
 type FormSubmitHandler = NonNullable<ComponentProps<"form">["onSubmit"]>;
 
@@ -197,41 +199,5 @@ export function CategoryForm({ category }: { category?: Category }) {
         </form>
       </section>
     </main>
-  );
-}
-
-function validateCategoryForm({ name }: { name: string }) {
-  const errors: FieldErrors = {};
-
-  if (!name.trim()) {
-    errors.name = "Укажите название категории";
-  }
-
-  return errors;
-}
-
-function getInputClassName(hasError: boolean) {
-  return cn(
-    "h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
-    hasError &&
-      "border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20"
-  );
-}
-
-function FieldErrorText({
-  id,
-  message,
-}: {
-  id: string;
-  message?: string;
-}) {
-  if (!message) {
-    return null;
-  }
-
-  return (
-    <p className="text-sm text-destructive" id={id}>
-      {message}
-    </p>
   );
 }

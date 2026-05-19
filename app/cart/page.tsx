@@ -23,12 +23,15 @@ import {
   updateCartItemQuantity,
   type CartItem,
 } from "@/lib/cart";
-import { createOrder } from "@/lib/orders";
+import { useAuth } from "@/components/auth-provider";
+import { createOrder, getRequestErrorMessage } from "@/lib/api";
 import { AppRoutes } from "@/lib/routes";
 
 export default function CartPage() {
   const router = useRouter();
+  const { token } = useAuth();
   const [items, setItems] = useState<CartItem[]>([]);
+  const [error, setError] = useState("");
   const summary = useMemo(() => getCartSummary(items), [items]);
 
   useEffect(() => {
@@ -54,17 +57,36 @@ export default function CartPage() {
   function handleClear() {
     clearCart();
     setItems([]);
+    setError("");
   }
 
-  function handleCheckout() {
+  async function handleCheckout() {
     if (!items.length) {
       return;
     }
 
-    createOrder(items);
-    clearCart();
-    setItems([]);
-    router.push(AppRoutes.Orders);
+    if (!token) {
+      router.push(AppRoutes.SignIn);
+      return;
+    }
+
+    setError("");
+
+    try {
+      await createOrder(token, {
+        products: items.map((item) => ({
+          id: item.productId,
+          quantity: item.quantity,
+        })),
+      });
+      clearCart();
+      setItems([]);
+      router.push(AppRoutes.Orders);
+    } catch (caughtError) {
+      setError(
+        getRequestErrorMessage(caughtError, "Не удалось оформить заказ")
+      );
+    }
   }
 
   return (
@@ -91,6 +113,12 @@ export default function CartPage() {
             В каталог
           </Link>
         </div>
+
+        {error ? (
+          <div className="mt-6 rounded-lg border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive">
+            {error}
+          </div>
+        ) : null}
 
         {items.length ? (
           <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start">

@@ -17,8 +17,8 @@ import {
   signIn as signInRequest,
   signUp as signUpRequest,
   updateProfile as updateProfileRequest,
-  type Profile,
 } from "@/lib/api";
+import type { Profile } from "@/lib/api/types";
 import {
   getStoredToken,
   removeStoredToken,

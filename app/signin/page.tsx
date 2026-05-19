@@ -10,7 +10,7 @@ import { AuthCard } from "@/components/auth-card";
 import { useAuth } from "@/components/auth-provider";
 import { LoadingState } from "@/components/loading-state";
 import { Button } from "@/components/ui/button";
-import { ApiError } from "@/lib/api";
+import { getSignInErrorMessage } from "@/app/signin/_components/utils";
 import { AppRoutes } from "@/lib/routes";
 
 type FormSubmitHandler = NonNullable<ComponentProps<"form">["onSubmit"]>;
@@ -26,7 +26,7 @@ export default function SignInPage() {
 
   useEffect(() => {
     if (isReady && isAuthorized) {
-      router.replace(AppRoutes.Profile);
+      router.replace(AppRoutes.Home);
     }
   }, [isAuthorized, isReady, router]);
 
@@ -38,7 +38,7 @@ export default function SignInPage() {
 
     try {
       await signIn(email.trim(), password);
-      router.push(AppRoutes.Profile);
+      router.push(AppRoutes.Home);
     } catch (caughtError) {
       setError(getSignInErrorMessage(caughtError));
     } finally {
@@ -85,7 +85,10 @@ export default function SignInPage() {
             className="flex gap-2 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive"
             role="alert"
           >
-            <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+            <AlertCircle
+              className="mt-0.5 size-4 shrink-0"
+              aria-hidden="true"
+            />
             <p>{error || authError}</p>
           </div>
         ) : null}
@@ -106,24 +109,4 @@ export default function SignInPage() {
       </p>
     </AuthCard>
   );
-}
-
-function getSignInErrorMessage(error: unknown) {
-  if (error instanceof ApiError) {
-    if (error.status === 0) {
-      return error.message;
-    }
-
-    if (error.status === 400 || error.status === 401 || error.status === 404) {
-      return "Неверный email или пароль. Проверьте данные и попробуйте снова.";
-    }
-
-    if (error.status >= 500) {
-      return "Сервер авторизации временно недоступен. Попробуйте позже.";
-    }
-
-    return error.message;
-  }
-
-  return "Не удалось войти в аккаунт. Попробуйте еще раз.";
 }

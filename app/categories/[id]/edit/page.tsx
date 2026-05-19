@@ -6,7 +6,8 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { CategoryForm } from "@/components/category-form";
 import { LoadingState } from "@/components/loading-state";
-import { getCategory, getRequestErrorMessage, type Category } from "@/lib/api";
+import { getCategory, getRequestErrorMessage } from "@/lib/api";
+import type { Category } from "@/lib/api/types";
 import { AppRoutes } from "@/lib/routes";
 
 export default function EditCategoryPage() {

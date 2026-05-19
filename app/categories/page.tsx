@@ -1,17 +1,18 @@
 "use client";
 
-import { Edit, ImageOff, Plus, RefreshCw } from "lucide-react";
+import { Plus, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+import { CategoryCard } from "@/app/categories/_components/category-card";
 import { useAuth } from "@/components/auth-provider";
 import {
   Button,
-  ButtonSizes,
   ButtonVariants,
   buttonVariants,
 } from "@/components/ui/button";
-import { getCategories, getRequestErrorMessage, type Category } from "@/lib/api";
+import { getCategories, getRequestErrorMessage } from "@/lib/api";
+import type { Category } from "@/lib/api/types";
 import { AppRoutes } from "@/lib/routes";
 
 export default function CategoriesPage() {
@@ -142,43 +143,7 @@ export default function CategoriesPage() {
         ) : categories.length ? (
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {categories.map((category) => (
-              <article
-                className="flex items-center gap-4 rounded-lg border bg-card p-4 shadow-sm"
-                key={category.id}
-              >
-                <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted">
-                  {category.photo ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      className="h-full w-full object-cover"
-                      src={category.photo}
-                      alt={category.name}
-                    />
-                  ) : (
-                    <ImageOff
-                      className="size-6 text-muted-foreground"
-                      aria-hidden="true"
-                    />
-                  )}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h2 className="truncate font-semibold">{category.name}</h2>
-                  <p className="mt-1 truncate text-xs text-muted-foreground">
-                    {category.id}
-                  </p>
-                </div>
-                <Link
-                  className={buttonVariants({
-                    variant: ButtonVariants.Outline,
-                    size: ButtonSizes.Icon,
-                  })}
-                  href={AppRoutes.CategoryEdit(category.id)}
-                  aria-label="Редактировать категорию"
-                  title="Редактировать"
-                >
-                  <Edit aria-hidden="true" />
-                </Link>
-              </article>
+              <CategoryCard category={category} key={category.id} />
             ))}
           </div>
         ) : (

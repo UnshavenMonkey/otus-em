@@ -1,6 +1,6 @@
 "use client";
 
-import type { Product } from "@/lib/api";
+import type { Product } from "@/lib/api/types";
 
 const CART_STORAGE_KEY = "market-diploma-cart";
 const CART_CHANGE_EVENT = "market-diploma-cart-change";

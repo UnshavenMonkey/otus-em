@@ -30,9 +30,8 @@ import {
 import {
   getProducts,
   getRequestErrorMessage,
-  type Pagination,
-  type Product,
 } from "@/lib/api";
+import type { Pagination, Product } from "@/lib/api/types";
 import { AppRoutes } from "@/lib/routes";
 
 export default function Home() {

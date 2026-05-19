@@ -1,132 +1,48 @@
-const API_BASE_URL = "http://19429ba06ff2.vps.myjino.ru/api";
-const COMMAND_ID = "otus-em";
-
-export type AuthResult = {
-  token: string;
-};
-
-export type Profile = {
-  id: string;
-  name: string;
-  email: string;
-  signUpDate: string;
-  commandId: string;
-};
-
-export type Category = {
-  id: string;
-  name: string;
-  photo?: string;
-  createdAt: string;
-  updatedAt: string;
-  commandId: string;
-};
-
-export type Product = {
-  id: string;
-  name: string;
-  photo?: string;
-  desc?: string;
-  createdAt: string;
-  updatedAt: string;
-  oldPrice?: number;
-  price: number;
-  commandId: string;
-  category: Category;
-};
-
-export type Pagination = {
-  pageSize: number;
-  pageNumber: number;
-  total: number;
-};
-
-export type Sorting = {
-  type: "ASC" | "DESC";
-  field: "id" | "createdAt" | "updatedAt" | "name" | "date";
-};
-
-export type ListResponse<T> = {
-  data: T[];
-  pagination: Pagination;
-  sorting?: Sorting;
-};
-
-type ProductsFilters = {
-  name?: string;
-  categoryIds?: string[];
-  pagination?: {
-    pageSize?: number;
-    pageNumber?: number;
-  };
-  sorting?: Sorting;
-};
-
-type CategoriesFilters = {
-  name?: string;
-  pagination?: {
-    pageSize?: number;
-    pageNumber?: number;
-  };
-  sorting?: Sorting;
-};
-
-export type ProductBody = {
-  name: string;
-  photo?: string;
-  desc?: string;
-  oldPrice?: number;
-  price: number;
-  categoryId: string;
-};
-
-export type CategoryBody = {
-  name: string;
-  photo?: string;
-};
-
-type SignUpBody = {
-  email: string;
-  password: string;
-  commandId: string;
-};
-
-type SignInBody = {
-  email: string;
-  password: string;
-};
-
-type UpdateProfileBody = {
-  name: string;
-};
-
-type ChangePasswordBody = {
-  password: string;
-  newPassword: string;
-};
-
-type ChangePasswordResult = {
-  success: boolean;
-};
-
-type RequestOptions = {
-  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
-  token?: string;
-  body?: unknown;
-};
-
-export type FieldErrors = Record<string, string>;
+import { API_BASE_URL, COMMAND_ID, ErrorCode } from "@/lib/api/constants";
+import type {
+  AuthResult,
+  CategoriesFilters,
+  Category,
+  CategoryBody,
+  ChangePasswordBody,
+  ChangePasswordResult,
+  FieldErrors,
+  ListResponse,
+  Order,
+  OrderBody,
+  OrdersFilters,
+  Product,
+  ProductBody,
+  ProductsFilters,
+  Profile,
+  RequestOptions,
+  SignInBody,
+  SignUpBody,
+  UpdateOrderBody,
+  UpdateProfileBody,
+} from "@/lib/api/types";
 
 export class ApiError extends Error {
   status: number;
   fieldErrors: FieldErrors;
+  codes: ErrorCode[];
 
-  constructor(message: string, status: number, fieldErrors: FieldErrors = {}) {
+  constructor(
+    message: string,
+    status: number,
+    fieldErrors: FieldErrors = {},
+    codes: ErrorCode[] = []
+  ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.fieldErrors = fieldErrors;
+    this.codes = codes;
   }
+}
+
+export function hasRequestErrorCode(error: unknown, code: ErrorCode) {
+  return error instanceof ApiError && error.codes.includes(code);
 }
 
 export function getRequestErrorMessage(
@@ -183,7 +99,8 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     throw new ApiError(
       errorInfo.message,
       response.status,
-      errorInfo.fieldErrors
+      errorInfo.fieldErrors,
+      errorInfo.codes
     );
   }
 
@@ -199,11 +116,13 @@ async function getErrorInfo(response: Response) {
     return {
       message: message ?? getDefaultErrorMessage(response.status),
       fieldErrors,
+      codes: getErrorCodes(data),
     };
   } catch {
     return {
       message: getDefaultErrorMessage(response.status),
       fieldErrors: {},
+      codes: [],
     };
   }
 }
@@ -215,6 +134,21 @@ function getMessage(data: unknown) {
 
   const message = data.message;
   const error = data.error;
+  const errors = data.errors;
+
+  if (Array.isArray(errors)) {
+    const messages = errors
+      .map((item) =>
+        isRecord(item) && typeof item.message === "string"
+          ? item.message
+          : undefined
+      )
+      .filter(Boolean);
+
+    if (messages.length) {
+      return messages.join(". ");
+    }
+  }
 
   if (typeof message === "string") {
     return message;
@@ -247,6 +181,31 @@ function getFieldErrors(data: unknown): FieldErrors {
   collectFieldErrors(data, fieldErrors);
 
   return fieldErrors;
+}
+
+function getErrorCodes(data: unknown): ErrorCode[] {
+  if (!isRecord(data) || !Array.isArray(data.errors)) {
+    return [];
+  }
+
+  return data.errors
+    .map((error) => {
+      if (!isRecord(error) || !isRecord(error.extensions)) {
+        return undefined;
+      }
+
+      const code = error.extensions.code;
+
+      return isErrorCode(code) ? code : undefined;
+    })
+    .filter((code): code is ErrorCode => Boolean(code));
+}
+
+function isErrorCode(value: unknown): value is ErrorCode {
+  return (
+    typeof value === "string" &&
+    Object.values(ErrorCode).includes(value as ErrorCode)
+  );
 }
 
 function collectFieldErrors(data: unknown, fieldErrors: FieldErrors) {
@@ -317,10 +276,7 @@ function toSearchParams(filters: Record<string, unknown>) {
       return;
     }
 
-    params.set(
-      key,
-      typeof value === "string" ? value : JSON.stringify(value)
-    );
+    params.set(key, JSON.stringify(value));
   });
 
   return params.toString();
@@ -445,5 +401,43 @@ export function updateCategory(token: string, id: string, body: CategoryBody) {
     method: "PATCH",
     token,
     body,
+  });
+}
+
+export function getOrders(filters: OrdersFilters = {}, token?: string) {
+  const search = toSearchParams(filters);
+  const path = search ? `/orders?${search}` : "/orders";
+
+  return request<ListResponse<Order>>(path, {
+    token,
+  });
+}
+
+export function getOrder(id: string, token?: string) {
+  return request<Order>(`/orders/${id}`, {
+    token,
+  });
+}
+
+export function createOrder(token: string, body: OrderBody) {
+  return request<Order>("/orders", {
+    method: "POST",
+    token,
+    body,
+  });
+}
+
+export function updateOrder(token: string, id: string, body: UpdateOrderBody) {
+  return request<Order>(`/orders/${id}`, {
+    method: "PATCH",
+    token,
+    body,
+  });
+}
+
+export function deleteOrder(token: string, id: string) {
+  return request<Order>(`/orders/${id}`, {
+    method: "DELETE",
+    token,
   });
 }

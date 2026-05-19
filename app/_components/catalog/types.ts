@@ -1,4 +1,4 @@
-import type { Sorting } from "@/lib/api";
+import type { Sorting } from "@/lib/api/types";
 
 export enum ProductSortValue {
   CreatedAtDesc = "createdAt-desc",

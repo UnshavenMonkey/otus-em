@@ -10,7 +10,7 @@ import { AuthCard } from "@/components/auth-card";
 import { useAuth } from "@/components/auth-provider";
 import { LoadingState } from "@/components/loading-state";
 import { Button } from "@/components/ui/button";
-import { ApiError } from "@/lib/api";
+import { getSignUpErrorMessage } from "@/app/signup/_components/utils";
 import { AppRoutes } from "@/lib/routes";
 
 type FormSubmitHandler = NonNullable<ComponentProps<"form">["onSubmit"]>;
@@ -25,7 +25,7 @@ export default function SignUpPage() {
 
   useEffect(() => {
     if (isReady && isAuthorized) {
-      router.replace(AppRoutes.Profile);
+      router.replace(AppRoutes.Home);
     }
   }, [isAuthorized, isReady, router]);
 
@@ -36,7 +36,7 @@ export default function SignUpPage() {
 
     try {
       await signUp(email.trim(), password);
-      router.push(AppRoutes.Profile);
+      router.push(AppRoutes.Home);
     } catch (caughtError) {
       setError(getSignUpErrorMessage(caughtError));
     } finally {
@@ -73,7 +73,7 @@ export default function SignUpPage() {
             type="password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            minLength={6}
+            minLength={8}
             aria-invalid={Boolean(error)}
             required
           />
@@ -107,26 +107,4 @@ export default function SignUpPage() {
   );
 }
 
-function getSignUpErrorMessage(error: unknown) {
-  if (error instanceof ApiError) {
-    if (error.status === 0) {
-      return error.message;
-    }
 
-    if (error.status === 400) {
-      return "Проверьте email и пароль. Пароль должен быть не короче 6 символов.";
-    }
-
-    if (error.status === 409) {
-      return "Аккаунт с таким email уже существует. Попробуйте войти.";
-    }
-
-    if (error.status >= 500) {
-      return "Сервер регистрации временно недоступен. Попробуйте позже.";
-    }
-
-    return error.message;
-  }
-
-  return "Не удалось зарегистрироваться. Попробуйте еще раз.";
-}

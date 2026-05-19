@@ -1,4 +1,4 @@
-import type { Profile } from "@/lib/api";
+import type { Profile } from "@/lib/api/types";
 
 export type AuthContextValue = {
   token: string | null;

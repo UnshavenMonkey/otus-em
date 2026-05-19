@@ -10,7 +10,7 @@ import {
   ButtonVariants,
   buttonVariants,
 } from "@/components/ui/button";
-import type { Product } from "@/lib/api";
+import type { Product } from "@/lib/api/types";
 import {
   addProductToCart,
   getCartItemsFromSnapshot,
