@@ -1,6 +1,6 @@
 import type { OrderStatus } from "@/lib/api/types";
 
-export const API_BASE_URL = "http://19429ba06ff2.vps.myjino.ru/api";
+export const API_BASE_URL = "/api/proxy";
 export const COMMAND_ID = "otus-em";
 
 export const ORDER_STATUSES = [
