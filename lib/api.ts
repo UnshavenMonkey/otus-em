@@ -115,6 +115,43 @@ type RequestOptions = {
   body?: unknown;
 };
 
+export type FieldErrors = Record<string, string>;
+
+export class ApiError extends Error {
+  status: number;
+  fieldErrors: FieldErrors;
+
+  constructor(message: string, status: number, fieldErrors: FieldErrors = {}) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.fieldErrors = fieldErrors;
+  }
+}
+
+export function getRequestErrorMessage(
+  error: unknown,
+  fallbackMessage = "Запрос завершился с ошибкой."
+) {
+  if (error instanceof ApiError) {
+    return error.message;
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallbackMessage;
+}
+
+export function getRequestFieldErrors(error: unknown): FieldErrors {
+  if (error instanceof ApiError) {
+    return error.fieldErrors;
+  }
+
+  return {};
+}
+
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers = new Headers();
 
@@ -126,27 +163,150 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     headers.set("Authorization", `Bearer ${options.token}`);
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method: options.method ?? "GET",
-    headers,
-    body: options.body ? JSON.stringify(options.body) : undefined,
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method: options.method ?? "GET",
+      headers,
+      body: options.body ? JSON.stringify(options.body) : undefined,
+    });
+  } catch {
+    throw new ApiError(
+      "Не удалось подключиться к серверу. Проверьте интернет и попробуйте еще раз.",
+      0
+    );
+  }
 
   if (!response.ok) {
-    const message = await getErrorMessage(response);
-    throw new Error(message);
+    const errorInfo = await getErrorInfo(response);
+    throw new ApiError(
+      errorInfo.message,
+      response.status,
+      errorInfo.fieldErrors
+    );
   }
 
   return response.json() as Promise<T>;
 }
 
-async function getErrorMessage(response: Response) {
+async function getErrorInfo(response: Response) {
   try {
-    const data = (await response.json()) as { message?: string; error?: string };
-    return data.message ?? data.error ?? "Запрос завершился с ошибкой";
+    const data = await response.json();
+    const fieldErrors = getFieldErrors(data);
+    const message = getMessage(data);
+
+    return {
+      message: message ?? getDefaultErrorMessage(response.status),
+      fieldErrors,
+    };
   } catch {
-    return "Запрос завершился с ошибкой";
+    return {
+      message: getDefaultErrorMessage(response.status),
+      fieldErrors: {},
+    };
   }
+}
+
+function getMessage(data: unknown) {
+  if (!isRecord(data)) {
+    return undefined;
+  }
+
+  const message = data.message;
+  const error = data.error;
+
+  if (typeof message === "string") {
+    return message;
+  }
+
+  if (Array.isArray(message)) {
+    const messages = message
+      .map((item) =>
+        typeof item === "string"
+          ? item
+          : isRecord(item) && typeof item.message === "string"
+            ? item.message
+            : undefined
+      )
+      .filter(Boolean);
+
+    return messages.length ? messages.join(". ") : undefined;
+  }
+
+  if (typeof error === "string") {
+    return error;
+  }
+
+  return undefined;
+}
+
+function getFieldErrors(data: unknown): FieldErrors {
+  const fieldErrors: FieldErrors = {};
+
+  collectFieldErrors(data, fieldErrors);
+
+  return fieldErrors;
+}
+
+function collectFieldErrors(data: unknown, fieldErrors: FieldErrors) {
+  if (Array.isArray(data)) {
+    data.forEach((item) => collectFieldErrors(item, fieldErrors));
+    return;
+  }
+
+  if (!isRecord(data)) {
+    return;
+  }
+
+  const fieldName = data.fieldName ?? data.field ?? data.property;
+  const message = data.message ?? data.error;
+
+  if (typeof fieldName === "string") {
+    const normalizedMessage = Array.isArray(message)
+      ? message.filter((item) => typeof item === "string").join(". ")
+      : typeof message === "string"
+        ? message
+        : "Проверьте значение поля.";
+
+    fieldErrors[fieldName] = normalizedMessage;
+  }
+
+  if (Array.isArray(data.errors)) {
+    collectFieldErrors(data.errors, fieldErrors);
+  }
+
+  if (Array.isArray(data.message)) {
+    collectFieldErrors(data.message, fieldErrors);
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function getDefaultErrorMessage(status: number) {
+  if (status === 400) {
+    return "Проверьте введенные данные и попробуйте еще раз.";
+  }
+
+  if (status === 401) {
+    return "Нужно войти в аккаунт или обновить сессию.";
+  }
+
+  if (status === 403) {
+    return "У вас нет доступа к этому действию.";
+  }
+
+  if (status === 404) {
+    return "Запрошенные данные не найдены.";
+  }
+
+  if (status >= 500) {
+    return "Сервер временно недоступен. Попробуйте позже.";
+  }
+
+  return "Запрос завершился с ошибкой.";
 }
 
 function toSearchParams(filters: Record<string, unknown>) {

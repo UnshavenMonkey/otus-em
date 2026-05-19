@@ -1,13 +1,15 @@
 "use client";
 
+import { PackageCheck } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import type { ComponentProps } from "react";
 
 import { useAuth } from "@/components/auth-provider";
 import { LoadingState } from "@/components/loading-state";
-import { Button } from "@/components/ui/button";
-import type { Profile } from "@/lib/api";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { getRequestErrorMessage, type Profile } from "@/lib/api";
 
 type FormSubmitHandler = NonNullable<ComponentProps<"form">["onSubmit"]>;
 
@@ -72,9 +74,7 @@ function ProfileContent({
       setProfileMessage("Профиль обновлен");
     } catch (caughtError) {
       setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Не удалось обновить профиль"
+        getRequestErrorMessage(caughtError, "Не удалось обновить профиль")
       );
     } finally {
       setIsSavingProfile(false);
@@ -94,9 +94,7 @@ function ProfileContent({
       setPasswordMessage("Пароль изменен");
     } catch (caughtError) {
       setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Не удалось изменить пароль"
+        getRequestErrorMessage(caughtError, "Не удалось изменить пароль")
       );
     } finally {
       setIsChangingPassword(false);
@@ -129,6 +127,10 @@ function ProfileContent({
               <dd className="mt-1 font-medium">{profile?.commandId}</dd>
             </div>
           </dl>
+          <Link className={buttonVariants({ className: "mt-6" })} href="/orders">
+            <PackageCheck aria-hidden="true" />
+            Мои заказы
+          </Link>
         </section>
 
         <aside className="space-y-6">

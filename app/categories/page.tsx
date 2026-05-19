@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth-provider";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { getCategories, type Category } from "@/lib/api";
+import { getCategories, getRequestErrorMessage, type Category } from "@/lib/api";
 
 export default function CategoriesPage() {
   const { token, isReady, isAuthorized } = useAuth();
@@ -48,9 +48,10 @@ export default function CategoriesPage() {
       } catch (caughtError) {
         if (!isIgnored) {
           setError(
-            caughtError instanceof Error
-              ? caughtError.message
-              : "Не удалось загрузить категории"
+            getRequestErrorMessage(
+              caughtError,
+              "Не удалось загрузить категории"
+            )
           );
         }
       } finally {

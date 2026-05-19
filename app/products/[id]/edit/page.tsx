@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { LoadingState } from "@/components/loading-state";
 import { ProductForm } from "@/components/product-form";
-import { getProduct, type Product } from "@/lib/api";
+import { getProduct, getRequestErrorMessage, type Product } from "@/lib/api";
 
 export default function EditProductPage() {
   const params = useParams<{ id: string }>();
@@ -42,9 +42,7 @@ export default function EditProductPage() {
       } catch (caughtError) {
         if (!isIgnored) {
           setError(
-            caughtError instanceof Error
-              ? caughtError.message
-              : "Не удалось загрузить товар"
+            getRequestErrorMessage(caughtError, "Не удалось загрузить товар")
           );
         }
       } finally {

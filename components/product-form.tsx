@@ -12,11 +12,15 @@ import {
   createCategory,
   createProduct,
   getCategories,
+  getRequestFieldErrors,
+  getRequestErrorMessage,
   updateProduct,
   type Category,
+  type FieldErrors,
   type Product,
   type ProductBody,
 } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 type FormSubmitHandler = NonNullable<ComponentProps<"form">["onSubmit"]>;
 
@@ -38,6 +42,7 @@ export function ProductForm({ product }: ProductFormProps) {
   const [categoryId, setCategoryId] = useState(product?.category?.id ?? "");
   const [newCategoryName, setNewCategoryName] = useState("");
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [message, setMessage] = useState("");
   const [isLoadingCategories, setIsLoadingCategories] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -85,9 +90,10 @@ export function ProductForm({ product }: ProductFormProps) {
       } catch (caughtError) {
         if (!isIgnored) {
           setError(
-            caughtError instanceof Error
-              ? caughtError.message
-              : "Не удалось загрузить категории"
+            getRequestErrorMessage(
+              caughtError,
+              "Не удалось загрузить категории"
+            )
           );
         }
       } finally {
@@ -114,14 +120,16 @@ export function ProductForm({ product }: ProductFormProps) {
 
     const nextPrice = Number(price);
     const nextOldPrice = oldPrice ? Number(oldPrice) : undefined;
+    const nextFieldErrors = validateProductForm({
+      name,
+      price,
+      oldPrice,
+      categoryId,
+    });
 
-    if (!Number.isFinite(nextPrice) || nextPrice <= 0) {
-      setError("Укажите корректную цену");
-      return;
-    }
-
-    if (!categoryId) {
-      setError("Выберите категорию");
+    if (Object.keys(nextFieldErrors).length) {
+      setFieldErrors(nextFieldErrors);
+      setError("Проверьте поля формы");
       return;
     }
 
@@ -136,6 +144,7 @@ export function ProductForm({ product }: ProductFormProps) {
 
     setIsSaving(true);
     setError("");
+    setFieldErrors({});
     setMessage("");
 
     try {
@@ -149,10 +158,9 @@ export function ProductForm({ product }: ProductFormProps) {
       }
     } catch (caughtError) {
       setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Не удалось сохранить товар"
+        getRequestErrorMessage(caughtError, "Не удалось сохранить товар")
       );
+      setFieldErrors(normalizeProductFieldErrors(caughtError));
     } finally {
       setIsSaving(false);
     }
@@ -165,6 +173,7 @@ export function ProductForm({ product }: ProductFormProps) {
 
     setIsCreatingCategory(true);
     setError("");
+    clearFieldError("newCategoryName");
 
     try {
       const category = await createCategory(token, {
@@ -175,13 +184,31 @@ export function ProductForm({ product }: ProductFormProps) {
       setNewCategoryName("");
     } catch (caughtError) {
       setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Не удалось создать категорию"
+        getRequestErrorMessage(caughtError, "Не удалось создать категорию")
       );
+      const categoryFieldErrors = getRequestFieldErrors(caughtError);
+
+      if (categoryFieldErrors.name) {
+        setFieldErrors((currentErrors) => ({
+          ...currentErrors,
+          newCategoryName: categoryFieldErrors.name,
+        }));
+      }
     } finally {
       setIsCreatingCategory(false);
     }
+  }
+
+  function clearFieldError(fieldName: string) {
+    setFieldErrors((currentErrors) => {
+      if (!currentErrors[fieldName]) {
+        return currentErrors;
+      }
+
+      const nextErrors = { ...currentErrors };
+      delete nextErrors[fieldName];
+      return nextErrors;
+    });
   }
 
   if (!isReady || !isAuthorized) {
@@ -205,64 +232,110 @@ export function ProductForm({ product }: ProductFormProps) {
             <label className="block space-y-2 sm:col-span-2">
               <span className="text-sm font-medium">Название</span>
               <input
-                className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                className={getInputClassName(Boolean(fieldErrors.name))}
                 value={name}
-                onChange={(event) => setName(event.target.value)}
+                onChange={(event) => {
+                  setName(event.target.value);
+                  clearFieldError("name");
+                }}
+                aria-invalid={Boolean(fieldErrors.name)}
+                aria-describedby={fieldErrors.name ? "product-name-error" : undefined}
                 required
               />
+              <FieldErrorText id="product-name-error" message={fieldErrors.name} />
             </label>
 
             <label className="block space-y-2">
               <span className="text-sm font-medium">Цена</span>
               <input
-                className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                className={getInputClassName(Boolean(fieldErrors.price))}
                 type="number"
                 min="1"
                 step="1"
                 value={price}
-                onChange={(event) => setPrice(event.target.value)}
+                onChange={(event) => {
+                  setPrice(event.target.value);
+                  clearFieldError("price");
+                }}
+                aria-invalid={Boolean(fieldErrors.price)}
+                aria-describedby={fieldErrors.price ? "product-price-error" : undefined}
                 required
               />
+              <FieldErrorText id="product-price-error" message={fieldErrors.price} />
             </label>
 
             <label className="block space-y-2">
               <span className="text-sm font-medium">Старая цена</span>
               <input
-                className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                className={getInputClassName(Boolean(fieldErrors.oldPrice))}
                 type="number"
                 min="1"
                 step="1"
                 value={oldPrice}
-                onChange={(event) => setOldPrice(event.target.value)}
+                onChange={(event) => {
+                  setOldPrice(event.target.value);
+                  clearFieldError("oldPrice");
+                }}
+                aria-invalid={Boolean(fieldErrors.oldPrice)}
+                aria-describedby={
+                  fieldErrors.oldPrice ? "product-old-price-error" : undefined
+                }
+              />
+              <FieldErrorText
+                id="product-old-price-error"
+                message={fieldErrors.oldPrice}
               />
             </label>
 
             <label className="block space-y-2 sm:col-span-2">
               <span className="text-sm font-medium">Фото, URL</span>
               <input
-                className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                className={getInputClassName(Boolean(fieldErrors.photo))}
                 value={photo}
-                onChange={(event) => setPhoto(event.target.value)}
+                onChange={(event) => {
+                  setPhoto(event.target.value);
+                  clearFieldError("photo");
+                }}
                 placeholder="https://..."
+                aria-invalid={Boolean(fieldErrors.photo)}
+                aria-describedby={fieldErrors.photo ? "product-photo-error" : undefined}
               />
+              <FieldErrorText id="product-photo-error" message={fieldErrors.photo} />
             </label>
 
             <label className="block space-y-2 sm:col-span-2">
               <span className="text-sm font-medium">Описание</span>
               <textarea
-                className="min-h-28 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                className={cn(
+                  "min-h-28 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+                  fieldErrors.desc &&
+                    "border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20"
+                )}
                 value={desc}
-                onChange={(event) => setDesc(event.target.value)}
+                onChange={(event) => {
+                  setDesc(event.target.value);
+                  clearFieldError("desc");
+                }}
+                aria-invalid={Boolean(fieldErrors.desc)}
+                aria-describedby={fieldErrors.desc ? "product-desc-error" : undefined}
               />
+              <FieldErrorText id="product-desc-error" message={fieldErrors.desc} />
             </label>
 
             <label className="block space-y-2 sm:col-span-2">
               <span className="text-sm font-medium">Категория</span>
               <select
-                className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                className={getInputClassName(Boolean(fieldErrors.categoryId))}
                 value={categoryId}
-                onChange={(event) => setCategoryId(event.target.value)}
+                onChange={(event) => {
+                  setCategoryId(event.target.value);
+                  clearFieldError("categoryId");
+                }}
                 disabled={isLoadingCategories}
+                aria-invalid={Boolean(fieldErrors.categoryId)}
+                aria-describedby={
+                  fieldErrors.categoryId ? "product-category-error" : undefined
+                }
                 required
               >
                 <option value="">
@@ -274,6 +347,10 @@ export function ProductForm({ product }: ProductFormProps) {
                   </option>
                 ))}
               </select>
+              <FieldErrorText
+                id="product-category-error"
+                message={fieldErrors.categoryId}
+              />
             </label>
           </div>
 
@@ -281,10 +358,22 @@ export function ProductForm({ product }: ProductFormProps) {
             <h2 className="text-base font-semibold">Быстрая категория</h2>
             <div className="mt-3 flex flex-col gap-2 sm:flex-row">
               <input
-                className="h-10 flex-1 rounded-md border bg-background px-3 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                className={cn(
+                  getInputClassName(Boolean(fieldErrors.newCategoryName)),
+                  "flex-1"
+                )}
                 value={newCategoryName}
-                onChange={(event) => setNewCategoryName(event.target.value)}
+                onChange={(event) => {
+                  setNewCategoryName(event.target.value);
+                  clearFieldError("newCategoryName");
+                }}
                 placeholder="Название категории"
+                aria-invalid={Boolean(fieldErrors.newCategoryName)}
+                aria-describedby={
+                  fieldErrors.newCategoryName
+                    ? "new-category-name-error"
+                    : undefined
+                }
               />
               <Button
                 type="button"
@@ -296,6 +385,10 @@ export function ProductForm({ product }: ProductFormProps) {
                 Добавить
               </Button>
             </div>
+            <FieldErrorText
+              id="new-category-name-error"
+              message={fieldErrors.newCategoryName}
+            />
           </div>
 
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
@@ -315,5 +408,77 @@ export function ProductForm({ product }: ProductFormProps) {
         </form>
       </section>
     </main>
+  );
+}
+
+function validateProductForm({
+  name,
+  price,
+  oldPrice,
+  categoryId,
+}: {
+  name: string;
+  price: string;
+  oldPrice: string;
+  categoryId: string;
+}) {
+  const errors: FieldErrors = {};
+  const nextPrice = Number(price);
+  const nextOldPrice = oldPrice ? Number(oldPrice) : undefined;
+
+  if (!name.trim()) {
+    errors.name = "Укажите название товара";
+  }
+
+  if (!price || !Number.isFinite(nextPrice) || nextPrice <= 0) {
+    errors.price = "Укажите цену больше 0";
+  }
+
+  if (
+    oldPrice &&
+    (!Number.isFinite(nextOldPrice) || Number(nextOldPrice) <= 0)
+  ) {
+    errors.oldPrice = "Старая цена должна быть больше 0";
+  }
+
+  if (!categoryId) {
+    errors.categoryId = "Выберите категорию";
+  }
+
+  return errors;
+}
+
+function normalizeProductFieldErrors(error: unknown): FieldErrors {
+  const errors = getRequestFieldErrors(error);
+
+  return {
+    ...errors,
+    categoryId: errors.categoryId ?? errors.category,
+  };
+}
+
+function getInputClassName(hasError: boolean) {
+  return cn(
+    "h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+    hasError &&
+      "border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20"
+  );
+}
+
+function FieldErrorText({
+  id,
+  message,
+}: {
+  id: string;
+  message?: string;
+}) {
+  if (!message) {
+    return null;
+  }
+
+  return (
+    <p className="text-sm text-destructive" id={id}>
+      {message}
+    </p>
   );
 }

@@ -9,6 +9,7 @@ import {
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -21,6 +22,7 @@ import {
   updateCartItemQuantity,
   type CartItem,
 } from "@/lib/cart";
+import { createOrder } from "@/lib/orders";
 
 const currencyFormatter = new Intl.NumberFormat("ru-RU", {
   style: "currency",
@@ -29,6 +31,7 @@ const currencyFormatter = new Intl.NumberFormat("ru-RU", {
 });
 
 export default function CartPage() {
+  const router = useRouter();
   const [items, setItems] = useState<CartItem[]>([]);
   const summary = useMemo(() => getCartSummary(items), [items]);
 
@@ -55,6 +58,17 @@ export default function CartPage() {
   function handleClear() {
     clearCart();
     setItems([]);
+  }
+
+  function handleCheckout() {
+    if (!items.length) {
+      return;
+    }
+
+    createOrder(items);
+    clearCart();
+    setItems([]);
+    router.push("/orders");
   }
 
   return (
@@ -127,7 +141,7 @@ export default function CartPage() {
                     {currencyFormatter.format(summary.subtotal)}
                   </strong>
                 </div>
-                <Button className="mt-5 w-full" disabled>
+                <Button className="mt-5 w-full" onClick={handleCheckout}>
                   Оформить заказ
                 </Button>
                 <Button

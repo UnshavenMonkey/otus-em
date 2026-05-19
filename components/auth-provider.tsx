@@ -107,11 +107,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const authorize = useCallback(
     async (nextToken: string) => {
       setIsReady(false);
-      setStoredToken(nextToken);
-      await loadProfile(nextToken);
-      setIsReady(true);
+
+      try {
+        setStoredToken(nextToken);
+        await loadProfile(nextToken);
+      } catch (error) {
+        signOut();
+        throw error;
+      } finally {
+        setIsReady(true);
+      }
     },
-    [loadProfile]
+    [loadProfile, signOut]
   );
 
   const signIn = useCallback(

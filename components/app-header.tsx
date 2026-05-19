@@ -4,19 +4,24 @@ import {
   ListTree,
   LoaderCircle,
   LogOut,
+  Moon,
+  PackageCheck,
   ShoppingBag,
   ShoppingCart,
+  Sun,
   User,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/components/auth-provider";
+import { useTheme } from "@/components/theme-provider";
 import { Button, buttonVariants } from "@/components/ui/button";
 
 export function AppHeader() {
   const router = useRouter();
   const { isAuthorized, isReady, profile, signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   function handleSignOut() {
     signOut();
@@ -36,6 +41,31 @@ export function AppHeader() {
             <ShoppingCart aria-hidden="true" />
             Корзина
           </Link>
+          <Link className={buttonVariants({ variant: "ghost" })} href="/orders">
+            <PackageCheck aria-hidden="true" />
+            Заказы
+          </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleTheme}
+            aria-label={
+              theme === "dark"
+                ? "Включить светлую тему"
+                : "Включить темную тему"
+            }
+            title={
+              theme === "dark"
+                ? "Включить светлую тему"
+                : "Включить темную тему"
+            }
+          >
+            {theme === "dark" ? (
+              <Sun aria-hidden="true" />
+            ) : (
+              <Moon aria-hidden="true" />
+            )}
+          </Button>
 
           {!isReady ? (
             <div className="flex h-9 items-center gap-2 px-3 text-sm text-muted-foreground">

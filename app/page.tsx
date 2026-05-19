@@ -15,7 +15,13 @@ import { useEffect, useMemo, useState } from "react";
 
 import { useAuth } from "@/components/auth-provider";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { getProducts, type Pagination, type Product, type Sorting } from "@/lib/api";
+import {
+  getProducts,
+  getRequestErrorMessage,
+  type Pagination,
+  type Product,
+  type Sorting,
+} from "@/lib/api";
 import { addProductToCart } from "@/lib/cart";
 
 const PAGE_SIZE = 8;
@@ -117,9 +123,7 @@ export default function Home() {
         if (!isIgnored) {
           setProducts([]);
           setError(
-            caughtError instanceof Error
-              ? caughtError.message
-              : "Не удалось загрузить товары"
+            getRequestErrorMessage(caughtError, "Не удалось загрузить товары")
           );
         }
       } finally {

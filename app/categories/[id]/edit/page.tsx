@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { CategoryForm } from "@/components/category-form";
 import { LoadingState } from "@/components/loading-state";
-import { getCategory, type Category } from "@/lib/api";
+import { getCategory, getRequestErrorMessage, type Category } from "@/lib/api";
 
 export default function EditCategoryPage() {
   const params = useParams<{ id: string }>();
@@ -43,9 +43,10 @@ export default function EditCategoryPage() {
       } catch (caughtError) {
         if (!isIgnored) {
           setError(
-            caughtError instanceof Error
-              ? caughtError.message
-              : "Не удалось загрузить категорию"
+            getRequestErrorMessage(
+              caughtError,
+              "Не удалось загрузить категорию"
+            )
           );
         }
       } finally {

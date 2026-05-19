@@ -10,10 +10,14 @@ import { LoadingState } from "@/components/loading-state";
 import { Button } from "@/components/ui/button";
 import {
   createCategory,
+  getRequestFieldErrors,
+  getRequestErrorMessage,
   updateCategory,
   type Category,
   type CategoryBody,
+  type FieldErrors,
 } from "@/lib/api";
+import { cn } from "@/lib/utils";
 
 type FormSubmitHandler = NonNullable<ComponentProps<"form">["onSubmit"]>;
 
@@ -23,6 +27,7 @@ export function CategoryForm({ category }: { category?: Category }) {
   const [name, setName] = useState(category?.name ?? "");
   const [photo, setPhoto] = useState(category?.photo ?? "");
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [message, setMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -41,9 +46,11 @@ export function CategoryForm({ category }: { category?: Category }) {
     }
 
     const trimmedName = name.trim();
+    const nextFieldErrors = validateCategoryForm({ name });
 
-    if (!trimmedName) {
-      setError("Укажите название категории");
+    if (Object.keys(nextFieldErrors).length) {
+      setFieldErrors(nextFieldErrors);
+      setError("Проверьте поля формы");
       return;
     }
 
@@ -54,6 +61,7 @@ export function CategoryForm({ category }: { category?: Category }) {
 
     setIsSaving(true);
     setError("");
+    setFieldErrors({});
     setMessage("");
 
     try {
@@ -67,14 +75,25 @@ export function CategoryForm({ category }: { category?: Category }) {
       }
     } catch (caughtError) {
       setError(
-        caughtError instanceof Error
-          ? caughtError.message
-          : "Не удалось сохранить категорию"
+        getRequestErrorMessage(caughtError, "Не удалось сохранить категорию")
       );
+      setFieldErrors(getRequestFieldErrors(caughtError));
     } finally {
       setIsSaving(false);
     }
   };
+
+  function clearFieldError(fieldName: string) {
+    setFieldErrors((currentErrors) => {
+      if (!currentErrors[fieldName]) {
+        return currentErrors;
+      }
+
+      const nextErrors = { ...currentErrors };
+      delete nextErrors[fieldName];
+      return nextErrors;
+    });
+  }
 
   if (!isReady || !isAuthorized) {
     return <LoadingState text="Проверяем авторизацию..." />;
@@ -126,21 +145,33 @@ export function CategoryForm({ category }: { category?: Category }) {
           <label className="block space-y-2">
             <span className="text-sm font-medium">Название</span>
             <input
-              className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              className={getInputClassName(Boolean(fieldErrors.name))}
               value={name}
-              onChange={(event) => setName(event.target.value)}
+              onChange={(event) => {
+                setName(event.target.value);
+                clearFieldError("name");
+              }}
+              aria-invalid={Boolean(fieldErrors.name)}
+              aria-describedby={fieldErrors.name ? "category-name-error" : undefined}
               required
             />
+            <FieldErrorText id="category-name-error" message={fieldErrors.name} />
           </label>
 
           <label className="block space-y-2">
             <span className="text-sm font-medium">Фото, URL</span>
             <input
-              className="h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              className={getInputClassName(Boolean(fieldErrors.photo))}
               value={photo}
-              onChange={(event) => setPhoto(event.target.value)}
+              onChange={(event) => {
+                setPhoto(event.target.value);
+                clearFieldError("photo");
+              }}
               placeholder="https://..."
+              aria-invalid={Boolean(fieldErrors.photo)}
+              aria-describedby={fieldErrors.photo ? "category-photo-error" : undefined}
             />
+            <FieldErrorText id="category-photo-error" message={fieldErrors.photo} />
           </label>
 
           {error ? <p className="text-sm text-destructive">{error}</p> : null}
@@ -165,5 +196,41 @@ export function CategoryForm({ category }: { category?: Category }) {
         </form>
       </section>
     </main>
+  );
+}
+
+function validateCategoryForm({ name }: { name: string }) {
+  const errors: FieldErrors = {};
+
+  if (!name.trim()) {
+    errors.name = "Укажите название категории";
+  }
+
+  return errors;
+}
+
+function getInputClassName(hasError: boolean) {
+  return cn(
+    "h-10 w-full rounded-md border bg-background px-3 text-sm outline-none transition focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50",
+    hasError &&
+      "border-destructive focus-visible:border-destructive focus-visible:ring-destructive/20"
+  );
+}
+
+function FieldErrorText({
+  id,
+  message,
+}: {
+  id: string;
+  message?: string;
+}) {
+  if (!message) {
+    return null;
+  }
+
+  return (
+    <p className="text-sm text-destructive" id={id}>
+      {message}
+    </p>
   );
 }
